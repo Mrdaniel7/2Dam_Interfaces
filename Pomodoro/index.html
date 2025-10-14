@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Grove 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #f0f0f0;
+            --primary-color: #4a90e2;
+            --ui-bg: rgba(26, 26, 26, 0.8);
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        #bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            outline: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through to the canvas unless on a UI element */
+        }
+        
+        #ui-container > * {
+            pointer-events: auto; /* Re-enable pointer events for UI elements */
+        }
+
+        #timer-display {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(4rem, 20vw, 12rem);
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.85);
+            text-shadow: 0 0 20px rgba(0,0,0,0.5);
+            user-select: none;
+        }
+
+        .controls {
+            position: absolute;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            display: flex;
+            gap: 15px;
+            background-color: var(--ui-bg);
+            padding: 10px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Show controls on hover over the body/container */
+        body:hover .controls,
+        body:hover #timer-display {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        body:hover #sound-panel.active {
+             opacity: 1;
+            visibility: visible;
+        }
+
+
+        #main-controls {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #top-right-controls {
+            top: 20px;
+            right: 20px;
+        }
+        
+        #top-left-controls {
+            top: 20px;
+            left: 20px;
+        }
+
+        #speed-controls {
+            bottom: 20px;
+            left: 20px;
+        }
+
+        .speed-button {
+            width: auto;
+            padding: 0 15px;
+            border-radius: 10px;
+            height: 44px;
+        }
+
+        .speed-button.active, .sound-button.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+
+        .control-button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            border-radius: 50%;
+        }
+
+        .control-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1.1);
+        }
+
+        .control-button svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        
+        #sound-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 220px;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+        }
+
+        #sound-panel.active {
+             opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        #sound-buttons {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: space-around;
+        }
+
+        #volume-slider {
+            width: 90%;
+            margin-top: 10px;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background-color: var(--ui-bg);
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 550px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h2, .modal-content h3 {
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .modal-content .form-group {
+            margin-bottom: 15px;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-bottom: 5px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .modal-content input[type="number"], .modal-content input[type="text"], .modal-content input[type="password"], .modal-content select, .modal-content textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background-color: rgba(0,0,0,0.3);
+            color: var(--text-color);
+            font-size: 1rem;
+        }
+        
+        #task-list {
+            list-style: none;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        
+        #task-list li {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        
+        #task-list li:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        #task-list li.completed span {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+        
+        #task-list input[type="checkbox"] {
+           margin-right: 10px;
+           min-width: 16px;
+           min-height: 16px;
+       }
+
+        #task-list .delete-task {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: #ff6b6b;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        
+        #task-list li:hover .delete-task {
+            opacity: 1;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        #ai-tutor-loading .spinner {
+            border-color: rgba(255,255,255,0.2);
+            border-top-color: var(--primary-color);
+        }
+
+        #ai-tutor-result-container {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #ai-tutor-output {
+            line-height: 1.4;
+        }
+
+        #language-btn {
+            width: 2.5rem;
+            height: 1.75rem;
+            background-size: cover;
+            background-position: center;
+            border-radius: 0.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .language-menu {
+            position: absolute;
+            top: 54px;
+            right: 0;
+            width: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            padding: 5px;
+            background-color: var(--ui-bg);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 20;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg"></canvas>
+
+    <div id="ui-container">
+        <!-- Mobile Menu Button -->
+        <button id="mobile-menu-btn" class="fixed top-4 left-4 z-50 p-2 rounded-full hidden" style="background-color: var(--ui-bg); backdrop-filter: blur(10px);">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+        </button>
+
+        <!-- Mobile Sidebar -->
+        <div id="mobile-sidebar" class="fixed top-0 left-0 h-full w-64 p-4 z-40 transform -translate-x-full transition-transform" style="background-color: var(--ui-bg); backdrop-filter: blur(10px);">
+            <button id="close-sidebar-btn" class="absolute top-4 right-4 p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-xl font-bold mt-8 mb-4">Menú</h2>
+            <div id="mobile-controls-container" class="space-y-4"></div>
+        </div>
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
+
+
+        <div id="timer-display">25:00</div>
+        
+        <div id="main-controls" class="controls">
+            <button id="play-pause-btn" class="control-button" title="Play/Pause">
+                <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+                <svg id="pause-icon" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+            </button>
+             <button id="reset-btn" class="control-button" title="Reset">
+                <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"></path></svg>
+            </button>
+        </div>
+
+        <div id="top-right-controls" class="controls">
+             <button id="ai-tutor-btn" data-action="ai-tutor" class="control-button font-bold text-lg" title="Tutor IA">
+                AI
+            </button>
+            <div class="relative">
+                <button id="language-btn" data-action="language" title="Cambiar Idioma"></button>
+                <div id="language-dropdown" class="language-menu hidden">
+                    <button data-lang="es" class="lang-option w-full text-left px-4 py-2 text-sm flex items-center gap-3 hover:bg-primary-light rounded-none"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/es.png');"></span><span class="flex-1">Español</span></button>
+                    <button data-lang="en" class="lang-option w-full text-left px-4 py-2 text-sm flex items-center gap-3 hover:bg-primary-light rounded-none"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/us.png');"></span><span class="flex-1">English</span></button>
+                    <button data-lang="fr" class="lang-option w-full text-left px-4 py-2 text-sm flex items-center gap-3 hover:bg-primary-light rounded-none"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/fr.png');"></span><span class="flex-1">Français</span></button>
+                    <button data-lang="zh" class="lang-option w-full text-left px-4 py-2 text-sm flex items-center gap-3 hover:bg-primary-light rounded-none"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/cn.png');"></span><span class="flex-1">中文</span></button>
+                    <button data-lang="hi" class="lang-option w-full text-left px-4 py-2 text-sm flex items-center gap-3 hover:bg-primary-light rounded-none"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/in.png');"></span><span class="flex-1">हिन्दी</span></button>
+                </div>
+            </div>
+            <button id="fullscreen-btn" data-action="fullscreen" class="control-button" title="Pantalla Completa">
+                <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>
+            </button>
+            <button id="settings-btn" data-action="settings" class="control-button" title="Configuración">
+                <svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24-.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59-1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>
+            </button>
+        </div>
+        
+         <div id="top-left-controls" class="controls">
+             <button id="tasks-btn" data-action="tasks" class="control-button" title="Tareas">
+                 <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+            </button>
+             <button id="biome-btn" data-action="biome" class="control-button" title="Cambiar Bioma">
+                 <svg viewBox="0 0 24 24"><path d="M15 6l-2.5 4L10 4l-5 12h16l-6-8z"></path></svg>
+            </button>
+            <button id="sound-menu-btn" data-action="sound-menu" class="control-button" title="Sonido Ambiente">
+                <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </button>
+            <div id="pomodoro-counter" class="flex items-center gap-2 px-3 text-sm">
+                <span>🍅</span>
+                <span id="pomodoro-count-display" class="font-bold">0</span>
+            </div>
+        </div>
+
+        <div id="speed-controls" class="controls">
+            <button class="speed-button active" data-action="speed" data-speed="1">x1</button>
+            <button class="speed-button" data-action="speed" data-speed="2">x2</button>
+            <button class="speed-button" data-action="speed" data-speed="5">x5</button>
+            <button class="speed-button" data-action="speed" data-speed="10">x10</button>
+        </div>
+
+        <div id="sound-panel" class="controls">
+            <div id="sound-buttons">
+                <button class="control-button sound-button" data-sound="rain" title="Lluvia">
+                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 19H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h.71C7.37 9.69 9.54 8 12 8c2.65 0 4.88 1.99 5.29 4.58A3.003 3.003 0 0 1 21 14c0 1.66-1.34 3-3 3h-1v2z"/></svg>
+                </button>
+                <button class="control-button sound-button" data-sound="forest" title="Bosque">
+                   <svg viewBox="0 0 24 24"><path d="M22.2,8.6c-0.1-0.1-0.2-0.2-0.4-0.2c-0.3-0.2-0.7-0.1-0.9,0.1c-1.3,1-3.1,1.5-4.9,1.5c-1,0-2-0.2-2.9-0.5 c-0.5-0.2-1-0.1-1.4,0.3l-1,1c-0.2,0.2-0.2,0.5,0,0.7s0.5,0.2,0.7,0l1-1c0.1-0.1,0.2-0.1,0.3-0.1c0.8,0.3,1.7,0.4,2.6,0.4 c1.6,0,3.3-0.5,4.5-1.4c0.3-0.2,0.7-0.2,0.9,0.1C22.1,10.9,22.4,10.1,22.2,8.6z M17,14c-1.7,0-3-1.3-3-3s1.3-3,3-3s3,1.3,3,3 S18.7,14,17,14z M7,10C5.3,10,4,8.7,4,7s1.3-3,3-3s3,1.3,3,3S8.7,10,7,10z"/></svg>
+                </button>
+                <button class="control-button sound-button" data-sound="white_noise" title="Ruido Blanco">
+                   <svg viewBox="0 0 24 24"><path d="M3 9h2v6H3V9zm4 0h2v6H7V9zm4 0h2v6h-2V9zm4 0h2v6h-2V9zm4 0h2v6h-2V9z"/></svg>
+                </button>
+                <button class="control-button sound-button active" data-sound="mute" title="Silencio">
+                   <svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                </button>
+            </div>
+            <input type="range" id="volume-slider" min="0" max="100" value="50">
+        </div>
+
+    </div>
+    
+    <!-- Settings Modal --><div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close-btn" data-target="settings-modal">&times;</button>
+            <h2 data-translate-key="settingsTitle">Configuración</h2>
+            <div class="form-group">
+                <label data-translate-key="focusLabel">Enfoque</label>
+                <input type="number" id="focus-duration" value="25" min="1">
+            </div>
+            <div class="form-group">
+                <label data-translate-key="shortBreakLabel">Descanso Corto</label>
+                <input type="number" id="short-break-duration" value="5" min="1">
+            </div>
+            <div class="form-group">
+                <label data-translate-key="longBreakLabel">Descanso Largo</label>
+                <input type="number" id="long-break-duration" value="15" min="1">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tasks Modal --><div id="tasks-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close-btn" data-target="tasks-modal">&times;</button>
+            <h2 data-translate-key="todoTitle">Lista de Tareas</h2>
+            <ul id="task-list"></ul>
+            <div class="form-group">
+                <input type="text" id="new-task-input" placeholder="Añadir nueva tarea..." data-translate-key="todoPlaceholder">
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close-btn" data-target="api-key-modal">&times;</button>
+            <h3 class="text-lg font-bold mb-4" data-translate-key="apiKeyTitle">Configurar API Key de IA</h3>
+            <p class="text-sm text-secondary mb-4" data-translate-key="apiKeyDescription">
+                Para usar las funciones de IA, necesitas una API Key de Google AI Studio. Es gratis y fácil de obtener.
+            </p>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-sm mb-4 inline-block" style="color: var(--primary-color);">
+                <span data-translate-key="apiKeyLink">Obtener API Key aquí</span> &rarr;
+            </a>
+            <p id="api-key-error" class="text-red-500 text-sm mb-3 hidden" data-translate-key="apiKeyError"></p>
+            <div class="form-group">
+                <label for="api-key-input" data-translate-key="apiKeyLabel">Tu API Key</label>
+                <input type="password" id="api-key-input" class="w-full p-2 rounded-md bg-primary-light border border-custom text-sm" placeholder="Pega tu API key aquí...">
+            </div>
+            <button id="save-api-key-btn" class="w-full font-bold py-2 px-4 rounded-lg text-white" style="background-color: var(--primary-color);">
+                <span data-translate-key="apiKeySaveBtn">Guardar y Continuar</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- AI Modal -->
+    <div id="ai-tutor-modal" class="modal">
+         <div class="modal-content">
+            <button class="modal-close-btn" data-target="ai-tutor-modal">&times;</button>
+            <h3 class="text-lg font-bold mb-4" data-translate-key="aiTutorTitle">✨ Tutor IA</h3>
+            <p class="text-sm text-secondary mb-4" data-translate-key="aiTutorDescription">¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.</p>
+            
+            <h4 class="text-sm font-bold text-gray-400 mb-2" data-translate-key="aiHistoryTitle">Historial</h4>
+            <div id="ai-history-container" class="mb-4 max-h-32 overflow-y-auto p-2 rounded-lg" style="background-color: rgba(0,0,0,0.2);">
+                <ul id="ai-history-list">
+                    <!-- History items will be populated by JS -->
+                </ul>
+            </div>
+
+            <textarea id="ai-tutor-prompt-input" rows="3" class="w-full p-2 rounded-md bg-primary-light border border-custom text-sm mb-4" placeholder="Ej: ¿Por qué el cielo es azul?" data-translate-key="aiTutorPlaceholder"></textarea>
+            <button id="ai-tutor-generate-btn" class="w-full font-bold py-2 px-4 rounded-lg text-white transition-transform transform hover:scale-105" style="background-color: var(--primary-color);">
+                <span data-translate-key="aiTutorGenerateBtn">Explicar Concepto</span>
+            </button>
+            <div id="ai-tutor-result-container" class="mt-4 h-60">
+                <div id="ai-tutor-loading" class="hidden flex-col items-center justify-center text-center">
+                     <div class="spinner w-8 h-8 border-4 rounded-full animate-spin"></div>
+                    <p class="text-sm text-secondary" data-translate-key="aiTutorLoading">Pensando...</p>
+                </div>
+                <div id="ai-tutor-output" class="text-left text-sm whitespace-normal"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Load Tone.js via a classic script tag before the module script --><script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.min.js"></script>
+    <!-- Improved Perlin Noise library for more natural terrain --><script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
+
+
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+      }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- DOM ELEMENTS ---
+        const canvas = document.getElementById('bg');
+        const timerDisplay = document.getElementById('timer-display');
+        
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const resetBtn = document.getElementById('reset-btn');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const tasksBtn = document.getElementById('tasks-btn');
+        const biomeBtn = document.getElementById('biome-btn');
+        const soundMenuBtn = document.getElementById('sound-menu-btn');
+        const soundPanel = document.getElementById('sound-panel');
+        const volumeSlider = document.getElementById('volume-slider');
+        const pomodoroCountDisplay = document.getElementById('pomodoro-count-display');
+        
+        // Modals
+        const settingsModal = document.getElementById('settings-modal');
+        const tasksModal = document.getElementById('tasks-modal');
+        const workDurationInput = document.getElementById('focus-duration');
+        const shortBreakDurationInput = document.getElementById('short-break-duration');
+        const longBreakDurationInput = document.getElementById('long-break-duration');
+        
+        // AI Tutor
+        const aiTutorModal = document.getElementById('ai-tutor-modal');
+        const aiTutorBtn = document.getElementById('ai-tutor-btn');
+        const aiTutorGenerateBtn = document.getElementById('ai-tutor-generate-btn');
+        const aiTutorPromptInput = document.getElementById('ai-tutor-prompt-input');
+        const aiTutorLoading = document.getElementById('ai-tutor-loading');
+        const aiTutorOutput = document.getElementById('ai-tutor-output');
+        const aiHistoryList = document.getElementById('ai-history-list');
+
+        // API Key Modal
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+
+        // Mobile Menu
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileSidebar = document.getElementById('mobile-sidebar');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const mobileControlsContainer = document.getElementById('mobile-controls-container');
+
+        // Language
+        const languageBtn = document.getElementById('language-btn');
+        const languageDropdown = document.getElementById('language-dropdown');
+        const langOptions = document.querySelectorAll('.lang-option');
+
+        // Tasks
+        const newTaskInput = document.getElementById('new-task-input');
+        const taskList = document.getElementById('task-list');
+
+        // --- 3D SCENE SETUP ---
+        let scene, camera, renderer, controls, floor, ambientLight, sunLight, skybox, sunMesh;
+        let grove = [];
+        const shrubsGroup = new THREE.Group();
+        const flowersGroup = new THREE.Group();
+        
+        const simplex = new SimplexNoise();
+
+
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            if (window.innerWidth < 768) {
+                camera.position.set(0, 30, 70); // Mobile camera position
+            } else {
+                camera.position.set(0, 20, 50); // Desktop camera position
+            }
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.minDistance = 5;
+            controls.maxDistance = 80; 
+            controls.maxPolarAngle = Math.PI / 2.1;
+
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            sunLight.position.set(50, 50, -50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 200;
+            const shadowCamSize = 120;
+            sunLight.shadow.camera.left = -shadowCamSize;
+            sunLight.shadow.camera.right = shadowCamSize;
+            sunLight.shadow.camera.top = shadowCamSize;
+            sunLight.shadow.camera.bottom = -shadowCamSize;
+            scene.add(sunLight);
+
+            const floorSize = 200;
+            const floorSegments = 100;
+            const floorGeometry = new THREE.PlaneGeometry(floorSize, floorSize, floorSegments, floorSegments);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                vertexColors: true,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            
+            const vertices = floorGeometry.attributes.position;
+            const colors = [];
+            const color = new THREE.Color();
+            
+            const grassColor = new THREE.Color(0x4CAF50);
+            const darkGrassColor = new THREE.Color(0x388E3C);
+            const rockColor = new THREE.Color(0x757575);
+            
+            for (let i = 0; i < vertices.count; i++) {
+                const x = vertices.getX(i);
+                const y = vertices.getY(i);
+                
+                const height = getHeightAt(x, y); 
+                vertices.setZ(i, height);
+                
+                const heightRatio = Math.max(0, height / 20);
+                if (heightRatio < 0.3) {
+                    color.copy(darkGrassColor).lerp(grassColor, heightRatio / 0.3);
+                } else {
+                    color.copy(grassColor).lerp(rockColor, (heightRatio - 0.3) / 0.7);
+                }
+
+                colors.push(color.r, color.g, color.b);
+            }
+            floorGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            floorGeometry.computeVertexNormals();
+
+            floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            scene.add(shrubsGroup);
+            scene.add(flowersGroup);
+            addVegetation();
+
+            const sunGeometry = new THREE.SphereGeometry(7, 32, 32);
+            const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xFDB813 });
+            sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+            sunMesh.position.set(100, 60, -150);
+            scene.add(sunMesh);
+
+            const sunPointLight = new THREE.PointLight(0xFDB813, 0.5, 300);
+            sunMesh.add(sunPointLight);
+
+            const skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
+            const skyMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    topColor: { value: new THREE.Color() },
+                    bottomColor: { value: new THREE.Color() },
+                },
+                vertexShader: `
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+                        vWorldPosition = worldPosition.xyz;
+                        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+                        gl_Position.z = gl_Position.w;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 topColor;
+                    uniform vec3 bottomColor;
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        float h = normalize(vWorldPosition).y;
+                        gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), 0.8), 0.0)), 1.0);
+                    }
+                `,
+                side: THREE.BackSide,
+            });
+            skybox = new THREE.Mesh(skyGeometry, skyMaterial);
+            scene.add(skybox);
+
+            changeBiome();
+        }
+
+        // --- POMODORO LOGIC ---
+        let state = {
+            isRunning: false,
+            timerId: null,
+            mode: 'focus', 
+            workDuration: 25 * 60,
+            shortBreakDuration: 5 * 60,
+            longBreakDuration: 15 * 60,
+            currentTime: 25 * 60,
+            pomodoroCount: 0,
+            timeScale: 1,
+            currentLang: 'es'
+        };
+        
+        function updateDurations() {
+            state.workDuration = parseInt(workDurationInput.value) * 60;
+            state.shortBreakDuration = parseInt(shortBreakDurationInput.value) * 60;
+            state.longBreakDuration = parseInt(longBreakDurationInput.value) * 60;
+            resetTimer();
+        }
+        
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        
+        function updateTimerDisplay() {
+            timerDisplay.textContent = formatTime(state.currentTime);
+            document.title = `${formatTime(state.currentTime)} - Focus Grove`;
+        }
+
+        function switchMode(newMode) {
+            state.mode = newMode;
+
+            switch (newMode) {
+                case 'focus':
+                    state.currentTime = state.workDuration;
+                    break;
+                case 'shortBreak':
+                    state.currentTime = state.shortBreakDuration;
+                    break;
+                case 'longBreak':
+                    state.currentTime = state.longBreakDuration;
+                    break;
+            }
+            updateTimerDisplay();
+        }
+
+        function timerTick() {
+            state.currentTime--;
+            updateTimerDisplay();
+
+            if (state.mode === 'focus' && state.currentTime % 60 === 0 && state.currentTime < state.workDuration) {
+                growATree();
+            }
+
+            if (state.currentTime <= 0) {
+                playNotification();
+                if (state.mode === 'focus') {
+                    state.pomodoroCount++;
+                    pomodoroCountDisplay.textContent = state.pomodoroCount;
+                    growATree(); 
+                    if (state.pomodoroCount > 0 && state.pomodoroCount % 4 === 0) {
+                        switchMode('longBreak');
+                    } else {
+                        switchMode('shortBreak');
+                    }
+                } else {
+                    switchMode('focus');
+                }
+                pauseTimer();
+            }
+        }
+
+        function startTimer() {
+            if (state.isRunning) return;
+            startAudioContext();
+            state.isRunning = true;
+            state.timerId = setInterval(timerTick, 1000 / state.timeScale);
+            playIcon.style.display = 'none';
+            pauseIcon.style.display = 'block';
+            toggleAmbientSound(true);
+        }
+
+        function pauseTimer() {
+            if (!state.isRunning) return;
+            state.isRunning = false;
+            clearInterval(state.timerId);
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+            toggleAmbientSound(false);
+            try {
+                if (Tone.Transport.state === 'started') Tone.Transport.pause();
+            } catch (e) { console.warn('Error pausing Transport', e); }
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            clearGrove();
+            state.pomodoroCount = 0;
+            pomodoroCountDisplay.textContent = state.pomodoroCount;
+            changeSpeed(1);
+            switchMode('focus'); // Reset to focus mode without changing time immediately
+            state.currentTime = state.workDuration; // Set time for focus mode
+            updateTimerDisplay(); // Update display
+        }
+
+        // --- 3D FOREST LOGIC ---
+        function getHeightAt(x, y) {
+            const floorSize = 200;
+            const detailScale = 0.1;
+            const peakHeight = 20;
+
+            let height = 0;
+            height += simplex.noise2D(x * detailScale * 0.5, y * detailScale * 0.5) * 0.5;
+            height += simplex.noise2D(x * detailScale * 1.5, y * detailScale * 1.5) * 0.25;
+            height += simplex.noise2D(x * detailScale * 4, y * detailScale * 4) * 0.1;
+            height = (height + 1) / 2;
+            height = Math.pow(height, 1.5);
+
+            const yNormalized = (y + floorSize / 2) / floorSize;
+            const slopeHeight = peakHeight * Math.pow(yNormalized, 2);
+            return height * peakHeight * 0.5 + slopeHeight;
+        }
+
+        function addVegetation() {
+            shrubsGroup.clear();
+            flowersGroup.clear();
+
+            const bushGeometry = new THREE.SphereGeometry(1.2, 8, 8);
+            const bushMaterial = new THREE.MeshStandardMaterial({ color: 0x2E7D32, roughness: 1 });
+            for (let i = 0; i < 200; i++) {
+                const bush = new THREE.Mesh(bushGeometry, bushMaterial.clone());
+                bush.material.color.setHSL(0.33 + Math.random() * 0.05, 0.6, 0.3 + Math.random() * 0.2);
+
+                const x = (Math.random() - 0.5) * 180;
+                const z = (Math.random() - 0.5) * 180;
+                const height = getHeightAt(x, -z); 
+                
+                if (height > 0.2) { 
+                    bush.position.set(x, height + 0.5, z);
+                    bush.castShadow = true;
+                    shrubsGroup.add(bush);
+                }
+            }
+
+            const petalColors = [0xff4d6d, 0xffd60a, 0x8ac926, 0x00b4d8, 0xffb5e8];
+            const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x388e3c });
+            for (let i = 0; i < 400; i++) {
+                const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5);
+                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                const flower = new THREE.Group();
+
+                const petalGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+                const petalMaterial = new THREE.MeshStandardMaterial({ color: petalColors[Math.floor(Math.random() * petalColors.length)] });
+                const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+                petal.position.y = 0.3;
+                flower.add(stem);
+                flower.add(petal);
+
+                const x = (Math.random() - 0.5) * 180;
+                const z = (Math.random() - 0.5) * 180;
+                const height = getHeightAt(x, -z); 
+                
+                if (height > 0.2) {
+                    flower.position.set(x, height + 0.25, z);
+                    flower.rotation.y = Math.random() * Math.PI * 2;
+                    flowersGroup.add(flower);
+                }
+            }
+        }
+
+        function createTree() {
+            const tree = new THREE.Group();
+            
+            const trunkHeight = 5 + (Math.random() - 0.5) * 2;
+            const trunkGeo = new THREE.CylinderGeometry(0.2, 0.4, trunkHeight, 8);
+            trunkGeo.translate(0, trunkHeight / 2, 0);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e23 });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.castShadow = true;
+            tree.add(trunk);
+            
+            const leafLevels = 3;
+            for (let i = 0; i < leafLevels; i++) {
+                const leafRadius = 2 - i * 0.5;
+                const leafHeight = 2.5 - i * 0.5;
+                const leafGeo = new THREE.ConeGeometry(leafRadius, leafHeight, 8);
+                const leafMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+                const leaves = new THREE.Mesh(leafGeo, leafMat);
+                leaves.position.y = trunkHeight + i * 1.0 - 1 + leafHeight/2;
+                leaves.castShadow = true;
+                tree.add(leaves);
+            }
+            
+            return tree;
+        }
+
+        function clearGrove() {
+            grove.forEach(tree => scene.remove(tree));
+            grove = [];
+        }
+        
+        function growATree() {
+            const tree = createTree();
+            
+            const radius = 10 + Math.random() * 25;
+            const angle = Math.random() * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const y = getHeightAt(x,-z);
+            
+            if (y > 0.2) {
+                tree.position.set(x, y, z);
+                tree.scale.set(0.01, 0.01, 0.01);
+                tree.userData.isGrowing = true;
+                tree.userData.targetScale = 1.0 + (Math.random() - 0.5) * 0.4;
+                grove.push(tree);
+                scene.add(tree);
+            }
+        }
+
+        // --- SPEED CONTROLS ---
+        function changeSpeed(newSpeed) {
+            state.timeScale = newSpeed;
+
+            document.querySelectorAll('.speed-button').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseFloat(btn.dataset.speed) === newSpeed) {
+                    btn.classList.add('active');
+                }
+            });
+
+            if (state.isRunning) {
+                pauseTimer();
+                startTimer();
+            }
+        }
+
+        // --- BIOME/THEME SELECTOR ---
+        const biomes = [
+             { name: 'Forest', zenith: 0x87ceeb, horizon: 0xe0f2ff, ambient: 0xcccccc, sun: 0xffffff, sunColor: 0xFDB813 },
+             { name: 'Desert', zenith: 0xfab1a0, horizon: 0xffd3b6, ambient: 0xaaaaaa, sun: 0xfff5e1, sunColor: 0xFDB813 },
+             { name: 'Night', zenith: 0x0c0a1c, horizon: 0x2c3e50, ambient: 0x404060, sun: 0x606080, sunColor: 0xaaaaff }
+        ];
+        let currentBiomeIndex = -1;
+
+        function changeBiome() {
+            currentBiomeIndex = (currentBiomeIndex + 1) % biomes.length;
+            const biome = biomes[currentBiomeIndex];
+            
+            skybox.material.uniforms.topColor.value.set(biome.zenith);
+            skybox.material.uniforms.bottomColor.value.set(biome.horizon);
+            sunMesh.material.color.set(biome.sunColor);
+            ambientLight.color.set(biome.ambient);
+            sunLight.color.set(biome.sun);
+        }
+
+        // --- AUDIO (MEJORADO, CORREGIDO) ---
+        let soundSources = {};
+        let notificationSynth;
+        let currentSound = 'mute';
+        let isAudioReady = false;
+
+        function initAudio() {
+            const masterGain = new Tone.Gain(1).toDestination();
+            const rainSynth = new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, sustain: 1 }, volume: -12 });
+            const rainGain = new Tone.Gain(0).connect(masterGain);
+            rainSynth.connect(rainGain);
+            soundSources.rain = {
+                start: () => {
+                    try { if (rainSynth.state !== 'started') rainSynth.triggerAttack(); } catch(e){}
+                    rainGain.gain.rampTo(1, 0.8);
+                },
+                stop: () => {
+                    rainGain.gain.rampTo(0, 0.6);
+                },
+                setVolume: (v) => { try { rainSynth.volume.value = v; } catch(e){} }
+            };
+            const whiteSynth = new Tone.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.01, sustain: 1 }, volume: -24 });
+            const whiteGain = new Tone.Gain(0).connect(masterGain);
+            whiteSynth.connect(whiteGain);
+            soundSources.white_noise = {
+                start: () => {
+                    try { if (whiteSynth.state !== 'started') whiteSynth.triggerAttack(); } catch(e){}
+                    whiteGain.gain.rampTo(1, 0.6);
+                },
+                stop: () => {
+                    whiteGain.gain.rampTo(0, 0.4);
+                },
+                setVolume: (v) => { try { whiteSynth.volume.value = v; } catch(e){} }
+            };
+            const forestGain = new Tone.Gain(0).connect(masterGain);
+            const wind = new Tone.Noise('brown');
+            const windFilter = new Tone.Filter(800, 'lowpass');
+            const windLFO = new Tone.LFO(0.06, 500, 2000).start();
+            windLFO.connect(windFilter.frequency);
+            const windGain = new Tone.Gain(0).connect(forestGain);
+            wind.chain(windFilter, windGain);
+            const windChorus = new Tone.Chorus(0.1, 2.5, 0.5).start();
+            windFilter.connect(windChorus);
+            windChorus.connect(forestGain);
+            const birdReverb = new Tone.Reverb({ decay: 2.4, wet: 0.25 }).connect(forestGain);
+            const birdLoops = [];
+            const birdSynths = [];
+            for (let i = 0; i < 4; i++) {
+                const synth = new Tone.FMSynth({
+                    harmonicity: 1.6 + Math.random() * 0.8,
+                    modulationIndex: 8 + Math.random() * 6,
+                    oscillator: { type: 'sine' },
+                    envelope: { attack: 0.001, decay: 0.1 + Math.random() * 0.25, sustain: 0.05, release: 0.2 + Math.random() * 0.4 },
+                    volume: -20 - Math.random() * 6
+                });
+                const pan = new Tone.Panner(Math.random() * 2 - 1);
+                const gain = new Tone.Gain(0).connect(birdReverb);
+                synth.chain(pan, gain);
+                birdSynths.push({ synth, pan, gain });
+                const loop = new Tone.Loop(time => {
+                    if (Math.random() < 0.45) {
+                        const baseFreq = 600 + Math.random() * 800;
+                        const detune = (Math.random() - 0.5) * 200;
+                        const dur = 0.06 + Math.random() * 0.18;
+                        try { synth.set({ detune }); } catch(e){}
+                        try { pan.pan.rampTo(Math.random() * 2 - 1, 0.2); } catch(e){}
+                        try { synth.triggerAttackRelease(baseFreq, dur, time); } catch(e){}
+                    }
+                }, 0.6 + Math.random() * 1.4);
+                birdLoops.push(loop);
+            }
+            try { wind.start(); } catch(e){}
+            soundSources.forest = {
+                start: async () => {
+                    if (Tone.Transport.state !== 'started') await Tone.Transport.start();
+                    windGain.gain.cancelScheduledValues();
+                    windGain.gain.rampTo(1, 1.0);
+                    forestGain.gain.cancelScheduledValues();
+                    forestGain.gain.rampTo(1, 1.2);
+                    birdSynths.forEach((b, idx) => {
+                        b.gain.gain.cancelScheduledValues();
+                        b.gain.gain.rampTo(0.7 + Math.random() * 0.6, 0.6 + idx * 0.05);
+                    });
+                    birdLoops.forEach((l, idx) => {
+                        const when = Tone.now() + idx * 0.15;
+                        try { if (l.state !== 'started') l.start(when); } catch(e){}
+                    });
+                },
+                stop: () => {
+                    forestGain.gain.cancelScheduledValues();
+                    forestGain.gain.rampTo(0, 0.8);
+                    windGain.gain.cancelScheduledValues();
+                    windGain.gain.rampTo(0, 0.6);
+                    birdSynths.forEach(b => {
+                        b.gain.gain.cancelScheduledValues();
+                        b.gain.gain.rampTo(0, 0.5);
+                    });
+                },
+                setVolume: (v) => {
+                    birdSynths.forEach(b => { try { b.synth.volume.value = -12 - (100 - v) * 0.24; } catch(e){} });
+                    windGain.gain.rampTo(0.25 * (v / 50), 0.2);
+                }
+            };
+            notificationSynth = new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+                volume: -10
+            }).toDestination();
+            soundSources._internal = { masterGain };
+            updateVolume();
+        }
+
+        async function startAudioContext() {
+            if (isAudioReady) return;
+            await Tone.start();
+            if (Tone.Transport.state !== 'started') Tone.Transport.start();
+            isAudioReady = true;
+            console.log("Audio context + Transport started.");
+            updateVolume();
+        }
+
+        function stopAllAmbientSounds() {
+            if (!isAudioReady) return;
+            Object.keys(soundSources).forEach(key => {
+                if (key === '_internal' || !soundSources[key]) return;
+                const src = soundSources[key];
+                if (src && typeof src.stop === 'function') {
+                    try { src.stop(); } catch (e) { /* ignore */ }
+                }
+            });
+        }
+        
+        function playCurrentSound() {
+            if (!isAudioReady) return;
+            stopAllAmbientSounds();
+            const src = soundSources[currentSound];
+            if (src && typeof src.start === 'function') {
+                try { src.start(); } catch (e) { console.warn('Error starting sound', e); }
+            }
+        }
+        
+        function toggleAmbientSound(play) {
+             if (play) {
+                if (Tone.Transport.state !== 'started') Tone.Transport.start();
+                playCurrentSound();
+            } else {
+                stopAllAmbientSounds();
+                if (Tone.Transport.state === 'started') Tone.Transport.pause();
+            }
+        }
+
+        function updateVolume(volumeValue) {
+            const v = (typeof volumeValue === 'number') ? volumeValue : (document.getElementById ? parseFloat(document.getElementById('volume-slider')?.value ?? 50) : 50);
+            const dB = -40 + (v / 100) * 40;
+            if (isAudioReady) Tone.Destination.volume.value = dB;
+
+            if (soundSources.forest && typeof soundSources.forest.setVolume === 'function') soundSources.forest.setVolume(v);
+            if (soundSources.rain && typeof soundSources.rain.setVolume === 'function') soundSources.rain.setVolume(-12 + (v - 50) * 0.2);
+            if (soundSources.white_noise && typeof soundSources.white_noise.setVolume === 'function') soundSources.white_noise.setVolume(-24 + (v - 50) * 0.2);
+        }
+
+        function playNotification() {
+            if (!isAudioReady) return;
+            notificationSynth.triggerAttackRelease("C5", "8n", Tone.now());
+            notificationSynth.triggerAttackRelease("G5", "8n", Tone.now() + 0.2);
+        }
+
+        // --- TASK LIST & TRANSLATIONS---
+        let tasks = [];
+        let aiHistory = [];
+        const translations = {
+             es: {
+                aiTutorTitle: "✨ Tutor IA",
+                aiTutorDescription: "¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.",
+                aiTutorPlaceholder: "Ej: ¿Por qué el cielo es azul?",
+                aiTutorGenerateBtn: "Explicar Concepto",
+                aiTutorLoading: "Pensando...",
+                tutorPrompt: "Eres un tutor amigable y experto. Tu objetivo es explicar conceptos difíciles de una manera muy simple y fácil de entender. Usa analogías y un lenguaje claro. Responde siempre en español.",
+                aiHistoryTitle: "Historial",
+                aiHistoryEmpty: "No hay preguntas recientes.",
+                apiKeyTitle: "Configurar API Key de IA",
+                apiKeyDescription: "Para usar las funciones de IA, necesitas una API Key de Google AI Studio. Es gratis y fácil de obtener.",
+                apiKeyLink: "Obtener API Key aquí",
+                apiKeyLabel: "Tu API Key",
+                apiKeySaveBtn: "Guardar y Continuar",
+                apiKeyError: "Tu API Key parece ser inválida. Por favor, verifica e introdúcela de nuevo.",
+                todoTitle: "Lista de Tareas",
+                todoPlaceholder: "Añadir nueva tarea...",
+                settingsTitle: "Configuración",
+                focusLabel: "Enfoque",
+                shortBreakLabel: "Descanso Corto",
+                longBreakLabel: "Descanso Largo",
+             },
+             en: {
+                aiTutorTitle: "✨ AI Tutor",
+                aiTutorDescription: "Stuck on a problem? Describe it and the AI will give you a simple explanation.",
+                aiTutorPlaceholder: "E.g., Why is the sky blue?",
+                aiTutorGenerateBtn: "Explain Concept",
+                aiTutorLoading: "Thinking...",
+                tutorPrompt: "You are a friendly and expert tutor. Your goal is to explain difficult concepts in a very simple and easy-to-understand way. Use analogies and clear language. Always respond in English.",
+                aiHistoryTitle: "History",
+                aiHistoryEmpty: "No recent questions.",
+                apiKeyTitle: "Set up AI API Key",
+                apiKeyDescription: "To use the AI features, you need an API Key from Google AI Studio. It's free and easy to get.",
+                apiKeyLink: "Get API Key here",
+                apiKeyLabel: "Your API Key",
+                apiKeySaveBtn: "Save and Continue",
+                apiKeyError: "Your API Key seems to be invalid. Please check and enter it again.",
+                todoTitle: "To-Do List",
+                todoPlaceholder: "Add a new task...",
+                settingsTitle: "Settings",
+                focusLabel: "Focus",
+                shortBreakLabel: "Short Break",
+                longBreakLabel: "Long Break",
+             },
+             fr: {
+                aiTutorTitle: "✨ Tuteur IA",
+                aiTutorDescription: "Bloqué sur un problème ? Décrivez-le et l'IA vous donnera une explication simple.",
+                aiTutorPlaceholder: "Ex : Pourquoi le ciel est-il bleu ?",
+                aiTutorGenerateBtn: "Expliquer le Concept",
+                aiTutorLoading: "Réflexion...",
+                tutorPrompt: "Vous êtes un tuteur amical et expert. Votre objectif est d'expliquer des concepts difíciles d'une manière très simple et facile à comprendre. Utilisez des analogies et un langage clair. Répondez toujours en français.",
+                aiHistoryTitle: "Historique",
+                aiHistoryEmpty: "Aucune question récente.",
+                apiKeyTitle: "Configurer la clé API IA",
+                apiKeyDescription: "Pour utiliser les fonctionnalités d'IA, vous avez besoin d'une clé API de Google AI Studio. C'est gratuit et facile à obtenir.",
+                apiKeyLink: "Obtenez la clé API ici",
+                apiKeyLabel: "Votre Clé API",
+                apiKeySaveBtn: "Enregistrer et continuer",
+                apiKeyError: "Votre clé API semble invalide. Veuillez la vérifier et la saisir à nouveau.",
+                todoTitle: "Liste de Tâches",
+                todoPlaceholder: "Ajouter une nouvelle tâche...",
+                settingsTitle: "Paramètres",
+                focusLabel: "Concentration",
+                shortBreakLabel: "Pause Courte",
+                longBreakLabel: "Pause Longue",
+             },
+             zh: {
+                aiTutorTitle: "✨ AI导师",
+                aiTutorDescription: "遇到问题了吗？描述一下，AI会给你一个简单的解释让你继续前进。",
+                aiTutorPlaceholder: "例如：天空为什么是蓝色的？",
+                aiTutorGenerateBtn: "解释概念",
+                aiTutorLoading: "思考中...",
+                tutorPrompt: "你是一位友好而专业的导师。你的目标是用非常简单易懂的方式向感觉困惑的学生解释困难的概念。使用类比和清晰的语言。请总是用中文回答。",
+                aiHistoryTitle: "历史记录",
+                aiHistoryEmpty: "没有最近的问题。",
+                apiKeyTitle: "设置AI API密钥",
+                apiKeyDescription: "要使用AI功能，您需要来自Google AI Studio的API密钥。它是免费且易于获取的。",
+                apiKeyLink: "在此处获取API密钥",
+                apiKeyLabel: "您的API密钥",
+                apiKeySaveBtn: "保存并继续",
+                apiKeyError: "您的API密钥似乎无效。请检查并重新输入。",
+                todoTitle: "待办事项",
+                todoPlaceholder: "添加新任务...",
+                settingsTitle: "设置",
+                focusLabel: "专注",
+                shortBreakLabel: "短暂休息",
+                longBreakLabel: "长时间休息",
+             },
+             hi: {
+                aiTutorTitle: "✨ एआई ट्यूटर",
+                aiTutorDescription: "किसी समस्या में फंस गए हैं? इसका वर्णन करें और एआई आपको एक सरल व्याख्या देगा।",
+                aiTutorPlaceholder: "जैसे: आकाश नीला क्यों है?",
+                aiTutorGenerateBtn: "अवधारणा समझाओ",
+                aiTutorLoading: "सोच रहा है...",
+                tutorPrompt: "आप एक मिलनसार और विशेषज्ञ शिक्षक हैं। आपका लक्ष्य कठिन अवधारणाओं को बहुत ही सरल और समझने में आसान तरीके से समझाना है। उपमाओं और स्पष्ट भाषा का प्रयोग करें। हमेशा हिंदी में उत्तर दें।",
+                aiHistoryTitle: "इतिहास",
+                aiHistoryEmpty: "कोई हालिया प्रश्न नहीं।",
+                apiKeyTitle: "एआई एपीआई कुंजी सेट करें",
+                apiKeyDescription: "एआई सुविधाओं का उपयोग करने के लिए, आपको Google AI स्टूडियो से एक एपीआई कुंजी की आवश्यकता है। यह मुफ़्त और प्राप्त करने में आसान है।",
+                apiKeyLink: "यहां एपीआई कुंजी प्राप्त करें",
+                apiKeyLabel: "आपकी एपीआई कुंजी",
+                apiKeySaveBtn: "सहेजें और जारी रखें",
+                apiKeyError: "आपकी एपीआई कुंजी अमान्य लगती है। कृपया जांचें और इसे फिर से दर्ज करें।",
+                todoTitle: "कार्य सूची",
+                todoPlaceholder: "एक नया कार्य जोड़ें...",
+                settingsTitle: "समायोजन",
+                focusLabel: "केंद्र",
+                shortBreakLabel: "छोटा विराम",
+                longBreakLabel: "लंबा विराम",
+             }
+        };
+
+        function applyLanguage(lang) {
+            state.currentLang = lang;
+            document.documentElement.lang = lang;
+            localStorage.setItem('language', lang);
+            
+            const code = {es: 'es', en: 'us', fr: 'fr', zh: 'cn', hi: 'in'}[lang] || 'es';
+            languageBtn.style.backgroundImage = `url('https://flagcdn.com/w40/${code}.png')`;
+
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.dataset.translateKey;
+                if(translations[lang] && translations[lang][key]) {
+                    const translation = translations[lang][key];
+                    if (el.placeholder !== undefined && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                        el.placeholder = translation;
+                    } else if (el.title !== undefined && el.tagName === 'BUTTON') {
+                        el.title = translation;
+                    }
+                    else {
+                        el.textContent = translation;
+                    }
+                }
+            });
+             renderAiHistory(); // Re-render history to show "empty" message in correct language
+        }
+
+
+        function renderTasks() {
+            taskList.innerHTML = '';
+            tasks.forEach((task) => {
+                const li = document.createElement('li');
+                li.dataset.id = task.id;
+                
+                li.innerHTML = `
+                    <input type="checkbox" ${task.completed ? 'checked' : ''}>
+                    <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
+                    <button class="delete-task">&times;</button>
+                `;
+                taskList.appendChild(li);
+            });
+        }
+
+        function saveTasks() {
+            localStorage.setItem('focusGroveTasks', JSON.stringify(tasks));
+        }
+
+        function renderAiHistory() {
+            aiHistoryList.innerHTML = '';
+            if (aiHistory.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = translations[state.currentLang].aiHistoryEmpty || 'No hay preguntas recientes.';
+                li.className = 'text-xs text-gray-500 italic px-2';
+                aiHistoryList.appendChild(li);
+                return;
+            }
+            // Show in reverse order (most recent first)
+            [...aiHistory].reverse().forEach(historyItem => {
+                const li = document.createElement('li');
+                li.textContent = historyItem.question;
+                li.className = 'text-sm p-2 rounded-md cursor-pointer hover:bg-white/10 transition-colors truncate';
+                li.title = historyItem.question; // for full text on hover if truncated
+                li.addEventListener('click', () => {
+                    aiTutorPromptInput.value = historyItem.question;
+                    aiTutorOutput.innerHTML = historyItem.answer;
+                    aiTutorLoading.classList.add('hidden');
+                });
+                aiHistoryList.appendChild(li);
+            });
+        }
+
+        function loadHistory() {
+            const storedTasks = localStorage.getItem('focusGroveTasks');
+            if (storedTasks) {
+                tasks = JSON.parse(storedTasks);
+                renderTasks();
+            }
+            const storedAiHistory = localStorage.getItem('focusGroveAiHistory');
+            if(storedAiHistory) {
+                aiHistory = JSON.parse(storedAiHistory);
+            }
+        }
+        
+        function addTask() {
+            const text = newTaskInput.value.trim();
+            if (text) {
+                 tasks.push({ id: Date.now(), text, completed: false });
+                newTaskInput.value = '';
+                saveTasks();
+                renderTasks();
+            }
+        }
+        
+        function toggleTask(id) {
+             const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveTasks();
+                renderTasks();
+            }
+        }
+        
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            renderTasks();
+        }
+        
+        async function getTutorExplanation() {
+            const userQuery = aiTutorPromptInput.value.trim();
+            if (!userQuery) return;
+
+            const apiKey = localStorage.getItem('focusGroveApiKey');
+            if (!apiKey) {
+                aiTutorOutput.innerHTML = `<p class="text-red-500">No se ha configurado la API Key.</p>`;
+                aiTutorModal.classList.remove('active');
+                apiKeyModal.classList.add('active');
+                return;
+            }
+
+            const systemPrompt = translations[state.currentLang].tutorPrompt || translations.es.tutorPrompt;
+            
+            aiTutorLoading.classList.remove('hidden');
+            aiTutorOutput.innerHTML = '';
+            aiTutorGenerateBtn.disabled = true;
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    const htmlContent = text
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                    aiTutorOutput.innerHTML = htmlContent;
+
+                    // Save question and answer to history
+                    if (!aiHistory.some(item => item.question === userQuery)) {
+                        aiHistory.push({ question: userQuery, answer: htmlContent });
+                        if (aiHistory.length > 10) {
+                            aiHistory.shift();
+                        }
+                        localStorage.setItem('focusGroveAiHistory', JSON.stringify(aiHistory));
+                        renderAiHistory();
+                    }
+                } else {
+                    throw new Error("No text returned from API.");
+                }
+            } catch(error) {
+                console.error("Gemini API error:", error);
+                // Remove the invalid key
+                localStorage.removeItem('focusGroveApiKey');
+                // Hide the current modal
+                aiTutorModal.classList.remove('active');
+                // Show the API key modal with an error message
+                document.getElementById('api-key-error').classList.remove('hidden');
+                apiKeyModal.classList.add('active');
+            } finally {
+                aiTutorLoading.classList.add('hidden');
+                aiTutorGenerateBtn.disabled = false;
+            }
+        }
+
+        // --- CREDIT LINE ---
+        function addCreditLine() {
+            if (document.getElementById('credit-line')) return;
+            const credit = document.createElement('div');
+            credit.id = 'credit-line';
+            credit.textContent = 'Hecho por Daniel Terroba Alcala';
+            credit.style.position = 'fixed';
+            credit.style.bottom = '10px';
+            credit.style.right = '10px';
+            credit.style.fontSize = '12px';
+            credit.style.color = 'rgba(255, 255, 255, 0.3)';
+            credit.style.pointerEvents = 'none';
+            credit.style.zIndex = '1001';
+            document.body.appendChild(credit);
+        }
+
+        // --- MOBILE MENU ---
+        function setupMobileMenu() {
+            const controlsToMove = [
+                { el: document.getElementById('top-left-controls'), group: 'main' },
+                { el: document.getElementById('top-right-controls'), group: 'main' },
+                { el: document.getElementById('speed-controls'), group: 'speed' }
+            ];
+
+            const createGroup = (title) => {
+                const groupDiv = document.createElement('div');
+                const titleEl = document.createElement('h3');
+                titleEl.textContent = title;
+                titleEl.className = 'text-gray-400 text-sm font-bold mt-4 mb-2';
+                groupDiv.appendChild(titleEl);
+                return groupDiv;
+            };
+            
+            const mainGroup = createGroup('Acciones');
+            const speedGroup = createGroup('Velocidad');
+
+            controlsToMove.forEach(item => {
+                const buttons = Array.from(item.el.children);
+                buttons.forEach(button => {
+                    const newButton = button.cloneNode(true);
+                    if (item.group === 'main') {
+                        mainGroup.appendChild(newButton);
+                    } else if (item.group === 'speed') {
+                        speedGroup.appendChild(newButton);
+                    }
+                });
+            });
+            mobileControlsContainer.innerHTML = '';
+            mobileControlsContainer.appendChild(mainGroup);
+            mobileControlsContainer.appendChild(speedGroup);
+        }
+
+        function openSidebar() {
+            mobileSidebar.classList.remove('-translate-x-full');
+            sidebarOverlay.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            mobileSidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        }
+        
+        function handleResponsiveLayout() {
+            const isMobile = window.innerWidth < 768;
+            const desktopControlIds = ['top-left-controls', 'top-right-controls', 'speed-controls'];
+            
+            desktopControlIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (isMobile) {
+                        el.classList.add('hidden');
+                    } else {
+                        el.classList.remove('hidden');
+                    }
+                }
+            });
+
+            if (mobileMenuBtn) {
+                if (isMobile) {
+                    mobileMenuBtn.classList.remove('hidden');
+                } else {
+                    mobileMenuBtn.classList.add('hidden');
+                    closeSidebar(); 
+                }
+            }
+        }
+
+
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            playPauseBtn.addEventListener('click', () => {
+                startAudioContext();
+                if (state.isRunning) {
+                    pauseTimer();
+                } else {
+                    startTimer();
+                }
+            });
+            resetBtn.addEventListener('click', resetTimer);
+            
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error al intentar activar el modo de pantalla completa: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            });
+
+            // Modals
+            settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
+            tasksBtn.addEventListener('click', () => tasksModal.classList.add('active'));
+            aiTutorBtn.addEventListener('click', () => {
+                const apiKey = localStorage.getItem('focusGroveApiKey');
+                if (!apiKey) {
+                    document.getElementById('api-key-error').classList.add('hidden'); // Hide error on normal open
+                    apiKeyModal.classList.add('active');
+                } else {
+                    renderAiHistory();
+                    aiTutorModal.classList.add('active');
+                }
+            });
+            
+            document.querySelectorAll('.modal-close-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                   const targetModalId = e.currentTarget.dataset.target;
+                   document.getElementById(targetModalId).classList.remove('active');
+                });
+            });
+            
+            [settingsModal, tasksModal, aiTutorModal, apiKeyModal].forEach(modal => {
+                if (modal) {
+                    modal.addEventListener('click', (e) => {
+                        if(e.target === modal) {
+                            modal.classList.remove('active');
+                        }
+                    });
+                }
+            });
+            
+            saveApiKeyBtn.addEventListener('click', () => {
+                const key = apiKeyInput.value.trim();
+                if (key) {
+                    localStorage.setItem('focusGroveApiKey', key);
+                    apiKeyModal.classList.remove('active');
+                    document.getElementById('api-key-error').classList.add('hidden');
+                    renderAiHistory();
+                    aiTutorModal.classList.add('active');
+                } else {
+                    apiKeyInput.placeholder = "Por favor, introduce una clave válida.";
+                }
+            });
+            
+            workDurationInput.addEventListener('change', updateDurations);
+            shortBreakDurationInput.addEventListener('change', updateDurations);
+            longBreakDurationInput.addEventListener('change', updateDurations);
+
+            biomeBtn.addEventListener('click', changeBiome);
+            
+            document.getElementById('speed-controls').addEventListener('click', (e) => {
+                if (e.target.matches('.speed-button')) {
+                    const newSpeed = parseFloat(e.target.dataset.speed);
+                    changeSpeed(newSpeed);
+                }
+            });
+
+            // Re-delegate events for cloned mobile buttons
+            mobileControlsContainer.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                
+                const action = button.dataset.action;
+                if(!action) return;
+
+                if (action === 'tasks') tasksModal.classList.add('active');
+                if (action === 'biome') changeBiome();
+                if (action === 'sound-menu') soundPanel.classList.toggle('active');
+                if (action === 'settings') settingsModal.classList.add('active');
+                if (action === 'ai-tutor') aiTutorBtn.click();
+                if (action === 'fullscreen') fullscreenBtn.click();
+                if (action === 'language') languageBtn.click();
+                if (action === 'speed') changeSpeed(parseFloat(button.dataset.speed));
+                
+                if(action !== 'sound-menu' && action !== 'language') {
+                    closeSidebar();
+                }
+            });
+            
+            soundMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                soundPanel.classList.toggle('active');
+            });
+
+            document.getElementById('sound-buttons').addEventListener('click', (e) => {
+                startAudioContext();
+                const soundButton = e.target.closest('.sound-button');
+                if (soundButton) {
+                    currentSound = soundButton.dataset.sound;
+                    document.querySelectorAll('.sound-button').forEach(btn => btn.classList.remove('active'));
+                    soundButton.classList.add('active');
+                    if(state.isRunning) {
+                        playCurrentSound();
+                    }
+                }
+            });
+
+            volumeSlider.addEventListener('input', () => updateVolume());
+
+            document.addEventListener('click', (e) => {
+                if (soundPanel && !soundPanel.contains(e.target) && !soundMenuBtn.contains(e.target)) {
+                    soundPanel.classList.remove('active');
+                }
+                 if (languageDropdown && !languageDropdown.contains(e.target) && !languageBtn.contains(e.target)) {
+                    languageDropdown.classList.add('hidden');
+                }
+            });
+            
+            aiTutorGenerateBtn.addEventListener('click', getTutorExplanation);
+            
+            languageBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                languageDropdown.classList.toggle('hidden');
+            });
+
+            langOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    applyLanguage(option.dataset.lang);
+                    languageDropdown.classList.add('hidden');
+                });
+            });
+
+            // Tasks Listeners
+            newTaskInput.addEventListener('keypress', (e) => {
+                if(e.key === 'Enter') {
+                    addTask();
+                }
+            });
+            
+            taskList.addEventListener('click', (e) => {
+                 const deleteBtn = e.target.closest('.delete-task');
+                if (deleteBtn) {
+                    const id = parseInt(deleteBtn.closest('li').dataset.id);
+                    deleteTask(id);
+                }
+
+                const checkbox = e.target.closest('input[type="checkbox"]');
+                if (checkbox) {
+                     const id = parseInt(checkbox.closest('li').dataset.id);
+                     toggleTask(id);
+                }
+            });
+
+            // Mobile menu listeners
+            mobileMenuBtn.addEventListener('click', openSidebar);
+            closeSidebarBtn.addEventListener('click', closeSidebar);
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                handleResponsiveLayout();
+            });
+        }
+        
+        // --- ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (!document.getElementById('credit-line')) {
+                addCreditLine();
+            }
+
+            const delta = clock.getDelta();
+            controls.update();
+            
+            // Animate growing trees
+            grove.forEach(tree => {
+                if (tree.userData.isGrowing) {
+                    const scale = tree.scale.x;
+                    const targetScale = tree.userData.targetScale;
+                    if (scale < targetScale) {
+                        const newScale = scale + delta * 0.8; // Growth speed
+                        tree.scale.set(newScale, newScale, newScale);
+                    } else {
+                        tree.scale.set(targetScale, targetScale, targetScale); // Clamp to target
+                        tree.userData.isGrowing = false;
+                    }
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // --- INITIALIZATION ---
+        init3D();
+        initAudio();
+        loadHistory();
+        setupMobileMenu(); 
+        setupEventListeners();
+        handleResponsiveLayout();
+        animate();
+
+        // Load preferences and then set initial mode
+        const savedLang = localStorage.getItem('language') || 'es';
+        applyLanguage(savedLang);
+        switchMode('focus');
+
+    </script>
+</body>
+</html>
