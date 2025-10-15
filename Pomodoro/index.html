@@ -90,6 +90,14 @@
             visibility: visible;
         }
 
+        /* For smaller screens (mobile), make controls always visible */
+        @media (max-width: 768px), (pointer: coarse) {
+            .controls, #timer-display, #versus-scoreboard {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+
 
         #main-controls {
             bottom: 20px;
@@ -686,7 +694,7 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, increment, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- DOM ELEMENTS ---
         const canvas = document.getElementById('bg');
@@ -923,10 +931,6 @@
 
         function switchMode(newMode) {
             state.mode = newMode;
-            if (newMode === 'focus' && state.pomodoroCount > 0) { // Increment only after first break
-                 // Handled by timer tick completion
-            }
-
             switch (newMode) {
                 case 'focus':
                     state.currentTime = state.workDuration;
@@ -941,15 +945,26 @@
             updateTimerDisplay();
         }
 
-        function timerTick() {
+        async function timerTick() {
             state.currentTime--;
             updateTimerDisplay();
 
+            // Grow a tree every minute during a focus session.
+            // This triggers when the timer shows xx:00, including the final 00:00.
+            if (state.mode === 'focus' && state.currentTime % 60 === 0 && state.currentTime < state.workDuration) {
+                // No need to await, let it grow in the background
+                growATree({ isSpecial: false, taskId: null });
+            }
+
             if (state.currentTime <= 0) {
+                // IMPORTANT FIX: Pause timer immediately to prevent multiple triggers
+                pauseTimer(); 
                 playNotification();
+
                 if (state.mode === 'focus') {
                     state.pomodoroCount++;
-                    growATree(); 
+                    // The final tree is grown by the logic above when currentTime becomes 0.
+                    
                     if (state.pomodoroCount > 0 && state.pomodoroCount % 4 === 0) {
                         switchMode('longBreak');
                     } else {
@@ -958,7 +973,6 @@
                 } else {
                     switchMode('focus');
                 }
-                pauseTimer();
             }
         }
 
@@ -966,6 +980,7 @@
             if (state.isRunning) return;
             startAudioContext();
             state.isRunning = true;
+            if(state.timerId) clearInterval(state.timerId);
             state.timerId = setInterval(timerTick, 1000 / state.timeScale);
             playIcon.style.display = 'none';
             pauseIcon.style.display = 'block';
@@ -973,9 +988,11 @@
         }
 
         function pauseTimer() {
-            if (!state.isRunning) return;
             state.isRunning = false;
-            clearInterval(state.timerId);
+            if(state.timerId) {
+                clearInterval(state.timerId);
+                state.timerId = null;
+            }
             playIcon.style.display = 'block';
             pauseIcon.style.display = 'none';
             toggleAmbientSound(false);
@@ -986,10 +1003,8 @@
 
         function resetTimer() {
             pauseTimer();
-            // Don't clear grove if in multiplayer coop mode as it's shared
             if (!currentGameState.inMultiplayer || currentGameState.mode !== 'cooperative') {
-               // In versus mode, reset only clears your own trees. This needs multiplayer logic.
-                clearGrove(); // For now, clears local grove.
+                clearGrove();
             }
             changeSpeed(1);
             state.pomodoroCount = 0;
@@ -1208,6 +1223,9 @@
         }
         
         function addTreeToScene(treeData) {
+            // Avoid adding duplicate trees
+            if (grove.some(tree => tree.userData.id === treeData.id)) return;
+        
             const tree = createTree(treeData.type);
             
             if (treeData.taskId) {
@@ -1595,11 +1613,14 @@
             if (storedTasks) {
                 tasks = JSON.parse(storedTasks);
                 renderTasks();
-                tasks.forEach(task => {
-                    if (task.completed) {
-                        growATree({ isSpecial: true, taskId: task.id });
-                    }
-                });
+                // We will let the multiplayer sync handle showing initial trees
+                if(!currentGameState.inMultiplayer) {
+                    tasks.forEach(task => {
+                        if (task.completed) {
+                            growATree({ isSpecial: true, taskId: task.id });
+                        }
+                    });
+                }
             }
         }
         
@@ -1619,10 +1640,8 @@
                 task.completed = !task.completed;
                 
                 if (task.completed) {
-                    // Task is marked as complete, grow a special tree
                     growATree({ isSpecial: true, taskId: id });
                 } else {
-                    // Task is unmarked, remove the associated tree
                     removeTaskTree(id);
                 }
 
@@ -1641,12 +1660,27 @@
             renderTasks();
         }
         
-        function removeTaskTree(taskId) {
+        async function removeTaskTree(taskId) {
             if (currentGameState.inMultiplayer) {
-                // In multiplayer, we need to remove the tree from Firestore
-                removeTreeFromFirestore(taskId);
+                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                const gameSnap = await getDoc(gameRef);
+                if (!gameSnap.exists()) return;
+
+                const gameData = gameSnap.data();
+                let treeToRemove = null;
+
+                if (currentGameState.mode === 'cooperative') {
+                    treeToRemove = gameData.sharedTrees.find(t => t.taskId === taskId);
+                    if (treeToRemove) {
+                        await updateDoc(gameRef, { sharedTrees: arrayRemove(treeToRemove) });
+                    }
+                } else if (currentGameState.mode === 'versus') {
+                    treeToRemove = gameData.players[userId]?.trees.find(t => t.taskId === taskId);
+                    if (treeToRemove) {
+                        await updateDoc(gameRef, { [`players.${userId}.trees`]: arrayRemove(treeToRemove) });
+                    }
+                }
             } else {
-                 // Single player logic
                 const treeToRemove = grove.find(tree => tree.userData.taskId === taskId);
                 if (treeToRemove) {
                     removeTreeObjectFromScene(treeToRemove);
@@ -1654,6 +1688,7 @@
                 }
             }
         }
+
 
         function removeTreeObjectFromScene(treeObject) {
              scene.remove(treeObject);
@@ -1758,9 +1793,7 @@
                     status: 'waiting',
                     hostId: userId,
                     guestId: null,
-                    // For cooperative mode
                     sharedTrees: [],
-                    // For versus mode
                     players: {
                         [userId]: { pomodoros: 0, trees: [] }
                     }
@@ -1806,7 +1839,7 @@
         }
 
         function listenToGameChanges(gameId) {
-             if(currentGameState.unsubscribe) currentGameState.unsubscribe(); // Stop listening to previous game
+             if(currentGameState.unsubscribe) currentGameState.unsubscribe(); 
             
             localStorage.setItem('focusGroveLastGame', gameId);
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
@@ -1821,11 +1854,9 @@
                 const gameData = doc.data();
 
                 if (currentGameState.isHost && gameData.status === 'waiting' && gameData.guestId) {
-                    // A player has joined!
                     multiplayerModal.classList.remove('active');
                 }
                 
-                // Sync based on mode
                 if (gameData.mode === 'cooperative') {
                     syncCoopGrove(gameData.sharedTrees || []);
                     versusScoreboard.classList.add('hidden');
@@ -1836,16 +1867,14 @@
         }
         
         function syncCoopGrove(treesFromDb) {
-            // Add new trees that are in DB but not locally
             treesFromDb.forEach(treeData => {
                 if (!grove.some(localTree => localTree.userData.id === treeData.id)) {
                     addTreeToScene(treeData);
                 }
             });
 
-            // Remove local trees that are no longer in DB
             grove.slice().forEach(localTree => {
-                if(localTree.userData.taskId && !treesFromDb.some(dbTree => dbTree.id === localTree.userData.id)){
+                if (!treesFromDb.some(dbTree => dbTree.id === localTree.userData.id)) {
                     removeTreeObjectFromScene(localTree);
                     grove = grove.filter(t => t.uuid !== localTree.uuid);
                 }
@@ -1854,67 +1883,54 @@
         
         function syncVersusState(playersData) {
             versusScoreboard.classList.remove('hidden');
-
-            const hostId = Object.keys(playersData).find(id => id === userId || playersData[id].isHost);
-            const guestId = Object.keys(playersData).find(id => id !== hostId);
-
-            const myData = playersData[userId];
-            if (myData) {
-                 // Sync my own grove
-                myData.trees.forEach(treeData => {
-                    if (!grove.some(localTree => localTree.userData.id === treeData.id)) {
-                        addTreeToScene(treeData);
-                    }
-                });
-            }
-
-            // Update scoreboard
-            const hostScore = playersData[hostId]?.pomodoros || 0;
-            const guestScore = playersData[guestId]?.pomodoros || 0;
             
-            const p1ScoreEl = document.querySelector('#player1-score p');
-            const p2ScoreEl = document.querySelector('#player2-score p');
+            const myData = playersData[userId];
+            const myTreesFromDb = myData?.trees || [];
 
-            if (currentGameState.isHost) {
-                 p1ScoreEl.textContent = `${hostScore} 🍅`;
-                 p2ScoreEl.textContent = `${guestScore} 🍅`;
-            } else {
-                 p1ScoreEl.textContent = `${guestScore} 🍅`;
-                 p2ScoreEl.textContent = `${hostScore} 🍅`;
-            }
+            // Add new trees from DB
+            myTreesFromDb.forEach(treeData => {
+                if (!grove.some(localTree => localTree.userData.id === treeData.id)) {
+                    addTreeToScene(treeData);
+                }
+            });
+
+            // Remove local trees that are no longer in DB
+            grove.slice().forEach(localTree => {
+                if (!myTreesFromDb.some(dbTree => dbTree.id === localTree.userData.id)) {
+                    removeTreeObjectFromScene(localTree);
+                    grove = grove.filter(t => t.uuid !== localTree.uuid);
+                }
+            });
+            
+            // Update scoreboard
+            const hostId = currentGameState.isHost ? userId : Object.keys(playersData).find(id => id !== userId);
+            const guestId = currentGameState.isHost ? Object.keys(playersData).find(id => id !== userId) : userId;
+
+            const hostScore = (hostId && playersData[hostId]) ? playersData[hostId].pomodoros : 0;
+            const guestScore = (guestId && playersData[guestId]) ? playersData[guestId].pomodoros : 0;
+
+            document.querySelector('#player1-score p').textContent = `${hostScore} 🍅`;
+            document.querySelector('#player2-score p').textContent = `${guestScore} 🍅`;
+            document.querySelector('#player1-score h4').setAttribute('data-translate-key', 'host');
+            document.querySelector('#player2-score h4').setAttribute('data-translate-key', 'guest');
+            
+            applyLanguage(state.currentLang);
         }
 
         async function updateFirestoreWithNewTree(treeData) {
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-            const gameSnap = await getDoc(gameRef);
-            if (!gameSnap.exists()) return;
-            const gameData = gameSnap.data();
-
+            
             if (currentGameState.mode === 'cooperative') {
-                const updatedTrees = [...gameData.sharedTrees, treeData];
-                await updateDoc(gameRef, { sharedTrees: updatedTrees });
+                await updateDoc(gameRef, { sharedTrees: arrayUnion(treeData) });
             } else if (currentGameState.mode === 'versus') {
-                const currentPomodoros = gameData.players[userId].pomodoros + 1;
-                const updatedTrees = [...gameData.players[userId].trees, treeData];
-                await updateDoc(gameRef, {
-                    [`players.${userId}.pomodoros`]: currentPomodoros,
-                    [`players.${userId}.trees`]: updatedTrees
-                });
-            }
-        }
-        
-        async function removeTreeFromFirestore(taskId) {
-            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-            const gameSnap = await getDoc(gameRef);
-             if (!gameSnap.exists()) return;
-            const gameData = gameSnap.data();
-
-            if (currentGameState.mode === 'cooperative') {
-                const updatedTrees = gameData.sharedTrees.filter(t => t.taskId !== taskId);
-                 await updateDoc(gameRef, { sharedTrees: updatedTrees });
-            } else if (currentGameState.mode === 'versus') {
-                const updatedTrees = gameData.players[userId].trees.filter(t => t.taskId !== taskId);
-                 await updateDoc(gameRef, { [`players.${userId}.trees`]: updatedTrees });
+                const updates = {
+                    [`players.${userId}.trees`]: arrayUnion(treeData)
+                };
+                // Only increment pomodoro count for non-task trees
+                if (!treeData.taskId) {
+                    updates[`players.${userId}.pomodoros`] = increment(1);
+                }
+                await updateDoc(gameRef, updates);
             }
         }
         
@@ -1961,9 +1977,8 @@
             reader.onload = async (e) => {
                 try {
                     const importedData = JSON.parse(e.target.result);
-                    // Basic validation
-                    if(importedData.mode && importedData.sharedTrees !== undefined && importedData.players) {
-                        leaveGame(); // Leave any current game before hosting a new one
+                    if(importedData.mode && importedData.players) {
+                        leaveGame();
                         await hostGame(importedData.mode, importedData);
                     } else {
                         alert("Archivo JSON inválido.");
@@ -2179,12 +2194,6 @@
 
         // --- INITIALIZATION ---
         async function main() {
-            // --- IMPORTANTE PARA GITHUB PAGES ---
-            // El código original funciona en un entorno especial que provee la configuración.
-            // Para que funcione en GitHub Pages, necesitas tu propia configuración de Firebase.
-            // 1. Ve a https://firebase.google.com/ y crea un proyecto.
-            // 2. En tu proyecto, ve a "Project Settings" y crea una "Web App".
-            // 3. Firebase te dará un objeto `firebaseConfig`. Cópialo y pégalo aquí abajo.
             const deployedFirebaseConfig = {
               apiKey: "AIzaSyDigVtE9WexPsg0gOvjcsuYVO_FX-r__7o",
               authDomain: "interfaces-4bc20.firebaseapp.com",
@@ -2217,10 +2226,8 @@
                 
                 console.log("Authenticated with user ID:", userId);
                 
-                // Enable multiplayer button now that auth is complete
                 multiplayerBtn.disabled = false;
                 
-                // Initialize the rest of the app
                 init3D();
                 initAudio();
                 loadTasks();
@@ -2242,4 +2249,5 @@
     </script>
 </body>
 </html>
+
 
