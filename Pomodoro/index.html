@@ -37,6 +37,10 @@
             width: 100%;
             height: 100%;
         }
+        
+        #bg.playing-shooter {
+            cursor: crosshair;
+        }
 
         #ui-container {
             position: fixed;
@@ -78,8 +82,8 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        #versus-scoreboard {
-             position: absolute;
+        #versus-scoreboard, #duel-hud {
+            position: absolute;
             opacity: 1; /* Make controls visible by default */
             visibility: visible;
             transition: opacity 0.4s ease, visibility 0.4s ease;
@@ -98,7 +102,8 @@
         /* Auto-hide UI on inactivity for devices with a mouse */
         @media (pointer: fine) {
             body.ui-hidden .controls,
-            body.ui-hidden #versus-scoreboard {
+            body.ui-hidden #versus-scoreboard,
+            body.ui-hidden #duel-hud {
                 opacity: 0;
                 visibility: hidden;
             }
@@ -159,7 +164,7 @@
         }
         
         .control-button {
-             width: 44px;
+            width: 44px;
             height: 44px;
             border-radius: 50%;
         }
@@ -190,7 +195,7 @@
         }
 
         #sound-panel.active {
-             opacity: 1;
+            opacity: 1;
             visibility: visible;
             transform: translateY(0);
         }
@@ -203,7 +208,7 @@
         }
         
         .sound-button.active {
-             background-color: var(--primary-color);
+            background-color: var(--primary-color);
             color: white;
         }
 
@@ -333,7 +338,7 @@
            margin-right: 10px;
            min-width: 16px;
            min-height: 16px;
-         }
+       }
 
         #task-list .delete-task {
             margin-left: auto;
@@ -476,7 +481,7 @@
         }
 
         #copy-code-btn svg {
-             width: 20px;
+            width: 20px;
             height: 20px;
             fill: var(--text-color);
         }
@@ -512,6 +517,97 @@
         #player1-score h4 { color: var(--primary-color); }
         #player2-score h4 { color: var(--secondary-color); }
 
+        /* Shooter Minigame Styles */
+        #duel-mode-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(226, 74, 74, 0.4);
+            transition: all 0.2s ease;
+            z-index: 50;
+        }
+        #duel-mode-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(226, 74, 74, 0.5);
+        }
+        
+        #class-selection-modal .modal-content {
+            max-width: 900px;
+        }
+        #class-selection-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        .class-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+        .class-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            border-color: var(--primary-color);
+        }
+        .class-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        .class-card p {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 5px;
+        }
+
+        #duel-hud {
+            gap: 15px;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        #duel-score {
+            font-size: 2.5rem;
+            color: white;
+        }
+
+        .health-bar-container {
+            width: 150px;
+            height: 20px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 10px;
+            padding: 3px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .health-bar {
+            height: 100%;
+            width: 100%;
+            border-radius: 7px;
+            transition: width 0.3s ease;
+        }
+        #player1-health-bar { background-color: var(--primary-color); }
+        #player2-health-bar { background-color: var(--secondary-color); }
+
+        #duel-results-modal .modal-content {
+            text-align: center;
+        }
+        #duel-winner-text {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
     </style>
 </head>
 <body>
@@ -531,12 +627,26 @@
             </div>
              <div id="player2-score" class="player-score">
                 <h4 data-translate-key="guest">Invitado</h4>
-                 <div class="player-score-counters">
+                <div class="player-score-counters">
                     <p class="pomodoro-count">0 🍅</p>
                     <p class="tree-count">0 🌳</p>
                 </div>
             </div>
         </div>
+
+        <!-- DUEL HUD -->
+        <div id="duel-hud" class="hidden">
+            <div id="player1-info" style="text-align: right;">
+                <h4 id="player1-name-hud">Jugador 1</h4>
+                <div class="health-bar-container"><div id="player1-health-bar" class="health-bar"></div></div>
+            </div>
+            <div id="duel-score">0 - 0</div>
+            <div id="player2-info">
+                <h4 id="player2-name-hud">Jugador 2</h4>
+                <div class="health-bar-container"><div id="player2-health-bar" class="health-bar"></div></div>
+            </div>
+        </div>
+
 
         <div id="main-controls" class="controls">
             <button id="play-pause-btn" class="control-button" title="Play/Pause">
@@ -549,6 +659,7 @@
         </div>
 
         <div id="top-right-controls" class="controls">
+             <button id="duel-mode-btn" class="hidden">⚔️ ¡Duelo! ⚔️</button>
             <button id="ai-tutor-btn" class="control-button font-bold text-lg" title="Tutor IA">AI</button>
             
             <div class="relative">
@@ -595,7 +706,7 @@
                        <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                        <span data-translate-key="music">Música</span>
                    </button>
-                   <button id="language-menu-btn" class="menu-option mobile-only">
+                  <button id="language-menu-btn" class="menu-option mobile-only">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
                         <span data-translate-key="language">Idioma</span>
                     </button>
@@ -742,6 +853,44 @@
         </div>
     </div>
 
+    <!-- Class Selection Modal -->
+    <div id="class-selection-modal" class="modal">
+        <div class="modal-content">
+            <h2>Selecciona tu Clase</h2>
+            <p style="text-align:center; margin-bottom: 2rem; color: #aaa;">Elige tu estilo de combate para el duelo.</p>
+            <div id="class-selection-container">
+                <div class="class-card" data-class="scout">
+                    <h3>🏃‍♂️ Explorador</h3>
+                    <p><strong>Vida:</strong> 75</p>
+                    <p><strong>Velocidad:</strong> Muy Rápida</p>
+                    <p><strong>Arma:</strong> Pistola (Daño bajo, cadencia alta)</p>
+                </div>
+                <div class="class-card" data-class="soldier">
+                    <h3>⚔️ Soldado</h3>
+                    <p><strong>Vida:</strong> 100</p>
+                    <p><strong>Velocidad:</strong> Normal</p>
+                    <p><strong>Arma:</strong> Rifle (Daño medio, cadencia media)</p>
+                </div>
+                <div class="class-card" data-class="tank">
+                    <h3>🛡️ Tanque</h3>
+                    <p><strong>Vida:</strong> 150</p>
+                    <p><strong>Velocidad:</strong> Lenta</p>
+                    <p><strong>Arma:</strong> Escopeta (Daño alto, cadencia baja)</p>
+                </div>
+            </div>
+             <p id="waiting-for-opponent-class" class="hidden" style="text-align:center; margin-top: 1.5rem;">Esperando al oponente...</p>
+        </div>
+    </div>
+    
+    <!-- Duel Results Modal -->
+    <div id="duel-results-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="duel-winner-text">¡Duelo Terminado!</h2>
+            <p id="final-duel-score" style="font-size: 1.5rem; margin-bottom: 1rem;">0 - 0</p>
+            <button id="close-duel-results-btn" class="modal-button">Continuar</button>
+        </div>
+    </div>
+
 
     <!-- Load Tone.js via a classic script tag before the module script --><script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.min.js"></script>
     <!-- Improved Perlin Noise library for more natural terrain --><script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
@@ -758,6 +907,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, increment, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -827,6 +977,15 @@
         const exportGameBtn = document.getElementById('export-game-btn');
         const importGameInput = document.getElementById('import-game-input');
 
+        // Duel Minigame UI
+        const duelModeBtn = document.getElementById('duel-mode-btn');
+        const classSelectionModal = document.getElementById('class-selection-modal');
+        const duelHud = document.getElementById('duel-hud');
+        const duelScoreDisplay = document.getElementById('duel-score');
+        const player1HealthBar = document.getElementById('player1-health-bar');
+        const player2HealthBar = document.getElementById('player2-health-bar');
+        const duelResultsModal = document.getElementById('duel-results-modal');
+
         // Speed Controls
         const speedControls = document.getElementById('speed-controls');
         const speedToggleBtn = document.getElementById('speed-toggle-btn');
@@ -838,7 +997,8 @@
 
 
         // --- 3D SCENE SETUP ---
-        let scene, camera, renderer, controls, floor, ambientLight, sunLight, skybox, sunMesh;
+        let scene, camera, renderer, sunLight, floor, skybox, sunMesh;
+        let orbitControls, pointerLockControls;
         let grove = [];
         const shrubsGroup = new THREE.Group();
         const flowersGroup = new THREE.Group();
@@ -855,6 +1015,22 @@
             mode: null,
             unsubscribe: null,
             playerCount: 1,
+            playerIds: [],
+        };
+
+        // --- SHOOTER MINIGAME STATE ---
+        const duelState = {
+            active: false,
+            status: 'inactive', // 'inactive', 'selecting', 'active', 'finished'
+            players: {},
+            projectiles: [],
+            localPlayer: null,
+            remotePlayer: null,
+        };
+        const CLASS_STATS = {
+            scout:  { maxHealth: 75,  speed: 9, jumpHeight: 12, weapon: { damage: 8,  fireRate: 150, range: 80, projectileSpeed: 100 } },
+            soldier:{ maxHealth: 100, speed: 7, jumpHeight: 10, weapon: { damage: 15, fireRate: 300, range: 120, projectileSpeed: 80 } },
+            tank:   { maxHealth: 150, speed: 5, jumpHeight: 8,  weapon: { damage: 35, fireRate: 800, range: 40, projectileSpeed: 60 } }
         };
 
         function init3D() {
@@ -868,13 +1044,16 @@
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.minDistance = 5;
-            controls.maxDistance = 80; 
-            controls.maxPolarAngle = Math.PI / 2.1;
+            orbitControls = new OrbitControls(camera, renderer.domElement);
+            orbitControls.enableDamping = true;
+            orbitControls.minDistance = 5;
+            orbitControls.maxDistance = 80; 
+            orbitControls.maxPolarAngle = Math.PI / 2.1;
 
-            ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            pointerLockControls = new PointerLockControls(camera, document.body);
+            scene.add(pointerLockControls.getObject());
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
 
             sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -1009,7 +1188,7 @@
             document.title = `${formatTime(state.currentTime)} - Focus Grove`;
         }
 
-        function switchMode(newMode) {
+        async function switchMode(newMode) {
             state.mode = newMode;
             switch (newMode) {
                 case 'focus':
@@ -1021,6 +1200,11 @@
                 case 'longBreak':
                     state.currentTime = state.longBreakDuration;
                     break;
+            }
+            // Sync player status in multiplayer
+            if (currentGameState.inMultiplayer && currentGameState.mode === 'versus') {
+                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                await updateDoc(gameRef, { [`players.${userId}.status`]: newMode });
             }
             updateTimerDisplay();
         }
@@ -1051,12 +1235,12 @@
                     await growATree({ isSpecial: false, taskId: null, isPomodoroCompletion: true }); 
                     
                     if (state.pomodoroCount > 0 && state.pomodoroCount % 4 === 0) {
-                        switchMode('longBreak');
+                        await switchMode('longBreak');
                     } else {
-                        switchMode('shortBreak');
+                        await switchMode('shortBreak');
                     }
                 } else {
-                    switchMode('focus');
+                    await switchMode('focus');
                 }
             }
         }
@@ -1086,14 +1270,14 @@
             } catch (e) { console.warn('Error pausing Transport', e); }
         }
 
-        function resetTimer() {
+        async function resetTimer() {
             pauseTimer();
             if (!currentGameState.inMultiplayer || currentGameState.mode !== 'cooperative') {
                 clearGrove();
             }
             changeSpeed(1);
             state.pomodoroCount = 0;
-            switchMode('focus');
+            await switchMode('focus');
         }
 
         // --- 3D FOREST LOGIC ---
@@ -1356,11 +1540,14 @@
             skybox.material.uniforms.topColor.value.set(biome.zenith);
             skybox.material.uniforms.bottomColor.value.set(biome.horizon);
             sunMesh.material.color.set(biome.sunColor);
-            ambientLight.color.set(biome.ambient);
+            // This line was causing an error, ambientLight is now defined in init3D()
+            // It will be updated there. Let's update it here as well.
+            scene.traverse(obj => { if(obj.isAmbientLight) obj.color.set(biome.ambient); });
             sunLight.color.set(biome.sun);
         }
 
         // --- AUDIO ---
+        // This section is large, keeping it as is to avoid breaking it.
         let soundSources = {};
         let notificationSynth;
         let currentSound = 'mute';
@@ -1531,129 +1718,129 @@
         let tasks = [];
         const translations = {
              es: {
-                 aiTutorTitle: "✨ Tutor IA",
-                 aiTutorDescription: "¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.",
-                 aiTutorPlaceholder: "Ej: ¿Por qué el cielo es azul?",
-                 aiTutorGenerateBtn: "Explicar Concepto",
-                 aiTutorLoading: "Pensando...",
-                 todoTitle: "Lista de Tareas",
-                 todoPlaceholder: "Añadir nueva tarea...",
-                 settingsTitle: "Configuración",
-                 focusLabel: "Enfoque",
-                 shortBreakLabel: "Descanso Corto",
-                 longBreakLabel: "Descanso Largo",
-                 multiplayer: "Multijugador",
-                 biome: "Bioma",
-                 music: "Música",
-                 language: "Idioma",
-                 fullscreen: "Pantalla Completa",
-                 createGame: "Crear Partida",
-                 joinGame: "Unirse a Partida",
-                 selectMode: "Seleccionar Modo",
-                 cooperativeMode: "Cooperativo",
-                 versusMode: "Lucha",
-                 back: "Volver",
-                 waitingForPlayer: "Esperando jugador...",
-                 shareCode: "Comparte este código con un amigo:",
-                 copied: "¡Copiado!",
-                 enterCode: "Introduce el código de la partida",
-                 join: "Unirse",
-                 host: "Anfitrión",
-                 guest: "Invitado",
-                 saveLoadGame: "Guardar/Cargar Partida",
-                 saveLoadDesc: "Exporta el estado de tu partida multijugador para continuarla más tarde.",
-                 exportGame: "Exportar Partida",
-                 importGame: "Importar Partida (Anfitrión)"
+                  aiTutorTitle: "✨ Tutor IA",
+                  aiTutorDescription: "¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.",
+                  aiTutorPlaceholder: "Ej: ¿Por qué el cielo es azul?",
+                  aiTutorGenerateBtn: "Explicar Concepto",
+                  aiTutorLoading: "Pensando...",
+                  todoTitle: "Lista de Tareas",
+                  todoPlaceholder: "Añadir nueva tarea...",
+                  settingsTitle: "Configuración",
+                  focusLabel: "Enfoque",
+                  shortBreakLabel: "Descanso Corto",
+                  longBreakLabel: "Descanso Largo",
+                  multiplayer: "Multijugador",
+                  biome: "Bioma",
+                  music: "Música",
+                  language: "Idioma",
+                  fullscreen: "Pantalla Completa",
+                  createGame: "Crear Partida",
+                  joinGame: "Unirse a Partida",
+                  selectMode: "Seleccionar Modo",
+                  cooperativeMode: "Cooperativo",
+                  versusMode: "Lucha",
+                  back: "Volver",
+                  waitingForPlayer: "Esperando jugador...",
+                  shareCode: "Comparte este código con un amigo:",
+                  copied: "¡Copiado!",
+                  enterCode: "Introduce el código de la partida",
+                  join: "Unirse",
+                  host: "Anfitrión",
+                  guest: "Invitado",
+                  saveLoadGame: "Guardar/Cargar Partida",
+                  saveLoadDesc: "Exporta el estado de tu partida multijugador para continuarla más tarde.",
+                  exportGame: "Exportar Partida",
+                  importGame: "Importar Partida (Anfitrión)"
              },
              en: {
-                 aiTutorTitle: "✨ AI Tutor",
-                 aiTutorDescription: "Stuck on a problem? Describe it and the AI will give you a simple explanation.",
-                 aiTutorPlaceholder: "E.g., Why is the sky blue?",
-                 aiTutorGenerateBtn: "Explain Concept",
-                 aiTutorLoading: "Thinking...",
-                 todoTitle: "To-Do List",
-                 todoPlaceholder: "Add a new task...",
-                 settingsTitle: "Settings",
-                 focusLabel: "Focus",
-                 shortBreakLabel: "Short Break",
-                 longBreakLabel: "Long Break",
-                 multiplayer: "Multiplayer",
-                 biome: "Biome",
-                 music: "Music",
-                 language: "Language",
-                 fullscreen: "Fullscreen",
-                 createGame: "Create Game",
-                 joinGame: "Join Game",
-                 selectMode: "Select Mode",
-                 cooperativeMode: "Cooperative",
-                 versusMode: "Versus",
-                 back: "Back",
-                 waitingForPlayer: "Waiting for player...",
-                 shareCode: "Share this code with a friend:",
-                 copied: "Copied!",
-                 enterCode: "Enter the game code",
-                 join: "Join",
-                 host: "Host",
-                 guest: "Guest",
-                 saveLoadGame: "Save/Load Game",
-                 saveLoadDesc: "Export your multiplayer game state to continue it later.",
-                 exportGame: "Export Game",
-                 importGame: "Import Game (Host)"
+                  aiTutorTitle: "✨ AI Tutor",
+                  aiTutorDescription: "Stuck on a problem? Describe it and the AI will give you a simple explanation.",
+                  aiTutorPlaceholder: "E.g., Why is the sky blue?",
+                  aiTutorGenerateBtn: "Explain Concept",
+                  aiTutorLoading: "Thinking...",
+                  todoTitle: "To-Do List",
+                  todoPlaceholder: "Add a new task...",
+                  settingsTitle: "Settings",
+                  focusLabel: "Focus",
+                  shortBreakLabel: "Short Break",
+                  longBreakLabel: "Long Break",
+                  multiplayer: "Multiplayer",
+                  biome: "Biome",
+                  music: "Music",
+                  language: "Language",
+                  fullscreen: "Fullscreen",
+                  createGame: "Create Game",
+                  joinGame: "Join Game",
+                  selectMode: "Select Mode",
+                  cooperativeMode: "Cooperative",
+                  versusMode: "Versus",
+                  back: "Back",
+                  waitingForPlayer: "Waiting for player...",
+                  shareCode: "Share this code with a friend:",
+                  copied: "Copied!",
+                  enterCode: "Enter the game code",
+                  join: "Join",
+                  host: "Host",
+                  guest: "Guest",
+                  saveLoadGame: "Save/Load Game",
+                  saveLoadDesc: "Export your multiplayer game state to continue it later.",
+                  exportGame: "Export Game",
+                  importGame: "Import Game (Host)"
              },
              fr: { // (Añadir más traducciones si es necesario)
-                aiTutorTitle: "✨ Tuteur IA",
-                aiTutorDescription: "Bloqué sur un problème ? Décrivez-le et l'IA vous donnera une explication simple.",
-                aiTutorPlaceholder: "Ex : Pourquoi le ciel est-il bleu ?",
-                aiTutorGenerateBtn: "Expliquer le Concept",
-                aiTutorLoading: "Réflexion...",
-                todoTitle: "Liste de Tâches",
-                todoPlaceholder: "Ajouter une nouvelle tâche...",
-                settingsTitle: "Paramètres",
-                focusLabel: "Concentration",
-                shortBreakLabel: "Pause Courte",
-                longBreakLabel: "Pause Longue",
-                multiplayer: "Multijoueur",
-                biome: "Biome",
-                music: "Musique",
-                language: "Langue",
-                fullscreen: "Plein écran",
+                 aiTutorTitle: "✨ Tuteur IA",
+                 aiTutorDescription: "Bloqué sur un problème ? Décrivez-le et l'IA vous donnera une explication simple.",
+                 aiTutorPlaceholder: "Ex : Pourquoi le ciel est-il bleu ?",
+                 aiTutorGenerateBtn: "Expliquer le Concept",
+                 aiTutorLoading: "Réflexion...",
+                 todoTitle: "Liste de Tâches",
+                 todoPlaceholder: "Ajouter une nouvelle tâche...",
+                 settingsTitle: "Paramètres",
+                 focusLabel: "Concentration",
+                 shortBreakLabel: "Pause Courte",
+                 longBreakLabel: "Pause Longue",
+                 multiplayer: "Multijoueur",
+                 biome: "Biome",
+                 music: "Musique",
+                 language: "Langue",
+                 fullscreen: "Plein écran",
              },
-              zh: {
-                aiTutorTitle: "✨ AI导师",
-                aiTutorDescription: "遇到问题了吗？描述一下，AI会给你一个简单的解释让你继续前进。",
-                aiTutorPlaceholder: "例如：天空为什么是蓝色的？",
-                aiTutorGenerateBtn: "解释概念",
-                aiTutorLoading: "思考中...",
-                todoTitle: "待办事项",
-                todoPlaceholder: "添加新任务...",
-                settingsTitle: "设置",
-                focusLabel: "专注",
-                shortBreakLabel: "短暂休息",
-                longBreakLabel: "长时间休息",
-                multiplayer: "多人游戏",
-                biome: "生物群系",
-                music: "音乐",
-                language: "语言",
-                fullscreen: "全屏",
-            },
-            hi: {
-                aiTutorTitle: "✨ एआई ट्यूटर",
-                aiTutorDescription: "किसी समस्या में फंस गए हैं? इसका वर्णन करें और एआई आपको एक सरल व्याख्या देगा।",
-                aiTutorPlaceholder: "जैसे: आकाश नीला क्यों है?",
-                aiTutorGenerateBtn: "अवधारणा समझाओ",
-                aiTutorLoading: "सोच रहा है...",
-                todoTitle: "कार्य सूची",
-                todoPlaceholder: "एक नया कार्य जोड़ें...",
-                settingsTitle: "समायोजन",
-                focusLabel: "केंद्र",
-                shortBreakLabel: "छोटा विराम",
-                longBreakLabel: "लंबा विराम",
-                multiplayer: "मल्टीप्लेयर",
-                biome: "बायोम",
-                music: "संगीत",
-                language: "भाषा",
-                fullscreen: "पूर्ण स्क्रीन",
-            }
+             zh: {
+                 aiTutorTitle: "✨ AI导师",
+                 aiTutorDescription: "遇到问题了吗？描述一下，AI会给你一个简单的解释让你继续前进。",
+                 aiTutorPlaceholder: "例如：天空为什么是蓝色的？",
+                 aiTutorGenerateBtn: "解释概念",
+                 aiTutorLoading: "思考中...",
+                 todoTitle: "待办事项",
+                 todoPlaceholder: "添加新任务...",
+                 settingsTitle: "设置",
+                 focusLabel: "专注",
+                 shortBreakLabel: "短暂休息",
+                 longBreakLabel: "长时间休息",
+                 multiplayer: "多人游戏",
+                 biome: "生物群系",
+                 music: "音乐",
+                 language: "语言",
+                 fullscreen: "全屏",
+             },
+             hi: {
+                 aiTutorTitle: "✨ एआई ट्यूटर",
+                 aiTutorDescription: "किसी समस्या में फंस गए हैं? इसका वर्णन करें और एआई आपको एक सरल व्याख्या देगा।",
+                 aiTutorPlaceholder: "जैसे: आकाश नीला क्यों है?",
+                 aiTutorGenerateBtn: "अवधारणा समझाओ",
+                 aiTutorLoading: "सोच रहा है...",
+                 todoTitle: "कार्य सूची",
+                 todoPlaceholder: "एक नया कार्य जोड़ें...",
+                 settingsTitle: "समायोजन",
+                 focusLabel: "केंद्र",
+                 shortBreakLabel: "छोटा विराम",
+                 longBreakLabel: "लंबा विराम",
+                 multiplayer: "मल्टीप्लेयर",
+                 biome: "बायोम",
+                 music: "संगीत",
+                 language: "भाषा",
+                 fullscreen: "पूर्ण स्क्रीन",
+             }
         };
 
         function applyLanguage(lang) {
@@ -1870,7 +2057,7 @@
         
         async function hostGame(mode, importedData = null) {
             if (!userId) {
-                alert("Error de autenticación. Por favor, recarga la página.");
+                console.error("Authentication Error.");
                 return;
             }
             const gameId = generateGameId();
@@ -1885,8 +2072,9 @@
                     status: 'waiting',
                     hostId: userId,
                     players: {
-                        [userId]: { pomodoros: 0, trees: [] }
-                    }
+                        [userId]: { pomodoros: 0, trees: [], status: 'focus' }
+                    },
+                    duel: { status: 'inactive' }
                 };
             }
 
@@ -1905,7 +2093,7 @@
 
         async function joinGame(gameId) {
              if (!userId) {
-                alert("Error de autenticación. Por favor, recarga la página.");
+                console.error("Authentication Error.");
                 return;
             }
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
@@ -1946,10 +2134,11 @@
             }
 
             await updateDoc(gameRef, {
-                [`players.${userId}`]: { pomodoros: 0, trees: [] }
+                [`players.${userId}`]: { pomodoros: 0, trees: [], status: 'focus' }
             });
 
-            if (playerCount === 1) {
+            // For versus mode, start the game when the second player joins
+            if (gameData.mode === 'versus' && playerCount === 1) {
                 await updateDoc(gameRef, { status: 'active' });
             }
 
@@ -1976,6 +2165,7 @@
 
                 const gameData = doc.data();
                 currentGameState.playerCount = Object.keys(gameData.players).length;
+                currentGameState.playerIds = Object.keys(gameData.players);
 
 
                 if (currentGameState.isHost && gameData.status === 'active' && !multiplayerWaitingView.classList.contains('hidden')) {
@@ -1987,6 +2177,7 @@
                     versusScoreboard.classList.add('hidden');
                 } else if (gameData.mode === 'versus') {
                     syncVersusState(gameData);
+                    syncDuelState(gameData); // New function for minigame sync
                 }
             });
         }
@@ -2007,6 +2198,10 @@
         }
         
         function syncVersusState(gameData) {
+            if (duelState.active) {
+                versusScoreboard.classList.add('hidden');
+                return;
+            }
             versusScoreboard.classList.remove('hidden');
             const playersData = gameData.players;
             
@@ -2043,6 +2238,15 @@
 
             document.querySelector('#player1-score h4').textContent = (userId === hostId) ? `Tú (${hostName})` : hostName;
             document.querySelector('#player2-score h4').textContent = (userId === guestId) ? `Tú (${guestName})` : (guestId ? guestName : '...');
+            
+            // Check if both players are on break to show duel button
+            const p1Status = hostData.status;
+            const p2Status = guestData.status;
+            if (currentGameState.isHost && (p1Status === 'shortBreak' || p1Status === 'longBreak') && (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
+                duelModeBtn.classList.remove('hidden');
+            } else {
+                duelModeBtn.classList.add('hidden');
+            }
         }
 
 
@@ -2130,6 +2334,244 @@
             inactivityTimer = setTimeout(hideUI, 10000); // 10 seconds
         }
 
+        // --- SHOOTER MINIGAME LOGIC ---
+
+        function syncDuelState(gameData) {
+            const newDuelStatus = gameData.duel?.status || 'inactive';
+
+            // Transition from inactive to selecting
+            if (duelState.status === 'inactive' && newDuelStatus === 'selecting') {
+                duelState.status = 'selecting';
+                duelModeBtn.classList.add('hidden');
+                classSelectionModal.classList.add('active');
+            }
+
+            // Update class selection view
+            if (newDuelStatus === 'selecting') {
+                const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                const opponentClass = gameData.duel?.players?.[opponentId]?.class;
+                const myClass = gameData.duel?.players?.[userId]?.class;
+                if(myClass && !opponentClass) {
+                    document.getElementById('waiting-for-opponent-class').classList.remove('hidden');
+                }
+            }
+            
+            // Transition from selecting to active
+            if (duelState.status === 'selecting' && newDuelStatus === 'active') {
+                duelState.status = 'active';
+                const duelData = gameData.duel;
+                classSelectionModal.classList.remove('active');
+                versusScoreboard.classList.add('hidden');
+                duelHud.classList.remove('hidden');
+                
+                // Initialize players
+                for(const id in duelData.players) {
+                    const playerData = duelData.players[id];
+                    duelState.players[id] = {
+                        class: playerData.class,
+                        health: CLASS_STATS[playerData.class].maxHealth,
+                        score: playerData.score,
+                    };
+                }
+                startDuelScene(gameData);
+            }
+            
+            // Sync active game state (positions, health, etc.)
+            if (newDuelStatus === 'active' && duelState.active) {
+                const duelData = gameData.duel;
+                for (const id in duelData.players) {
+                    if (id !== userId && duelState.remotePlayer) { // Update remote player
+                        const remoteData = duelData.players[id];
+                        if (remoteData.position) {
+                           duelState.remotePlayer.position.copy(remoteData.position);
+                           duelState.remotePlayer.rotation.y = remoteData.rotationY;
+                        }
+                        duelState.players[id].health = remoteData.health;
+                        duelState.players[id].score = remoteData.score;
+                    } else if (id === userId) { // Update local player health if changed by opponent
+                         duelState.players[id].health = duelData.players[id].health;
+                         duelState.localPlayer.health = duelData.players[id].health;
+                    }
+                }
+                updateDuelHud();
+
+                 // Sync projectiles
+                if (duelData.projectiles) {
+                     duelData.projectiles.forEach(p => {
+                        // Avoid creating a projectile we already know about
+                        if (!duelState.projectiles.some(proj => proj.userData.id === p.id)) {
+                             if (p.owner !== userId) { // Only spawn projectiles from the other player
+                                spawnProjectile(p, false);
+                             }
+                        }
+                     });
+                }
+            }
+
+             // Transition from active to finished
+            if (duelState.status === 'active' && newDuelStatus === 'finished') {
+                endDuelScene(gameData);
+            }
+        }
+
+        async function handleDuelButtonClick() {
+            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+            const initialDuelState = {
+                status: 'selecting',
+                players: {
+                    [currentGameState.playerIds[0]]: { score: 0, health: 100 },
+                    [currentGameState.playerIds[1]]: { score: 0, health: 100 }
+                },
+                projectiles: []
+            };
+            await updateDoc(gameRef, { duel: initialDuelState });
+        }
+        
+        async function handleClassSelection(e) {
+            const card = e.target.closest('.class-card');
+            if (!card) return;
+            
+            const className = card.dataset.class;
+            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+            await updateDoc(gameRef, { 
+                [`duel.players.${userId}.class`]: className,
+                [`duel.players.${userId}.health`]: CLASS_STATS[className].maxHealth
+            });
+
+            // If I'm the host, check if both players have selected a class
+            if (currentGameState.isHost) {
+                const gameSnap = await getDoc(gameRef);
+                const duelData = gameSnap.data().duel;
+                const p1Class = duelData.players[currentGameState.playerIds[0]].class;
+                const p2Class = duelData.players[currentGameState.playerIds[1]].class;
+                if (p1Class && p2Class) {
+                    await updateDoc(gameRef, { 'duel.status': 'active' });
+                }
+            }
+        }
+        
+        function startDuelScene(gameData) {
+            duelState.active = true;
+            canvas.classList.add('playing-shooter');
+            // Hide normal UI, show duel UI
+            document.querySelectorAll('.controls').forEach(c => c.classList.add('hidden'));
+
+            // Create Player Controllers
+            const opponentId = currentGameState.playerIds.find(id => id !== userId);
+            
+            const myClass = gameData.duel.players[userId].class;
+            const opponentClass = gameData.duel.players[opponentId].class;
+            
+            duelState.localPlayer = new PlayerController(true, myClass);
+            duelState.remotePlayer = new PlayerController(false, opponentClass).mesh;
+            scene.add(duelState.remotePlayer);
+            
+            enableShooterControls();
+        }
+
+        async function endDuelScene(gameData) {
+            if (!duelState.active) return; // Prevent multiple triggers
+            
+            duelState.active = false;
+            duelState.status = 'finished';
+            
+            canvas.classList.remove('playing-shooter');
+            disableShooterControls();
+
+            // Clean up scene
+            if (duelState.localPlayer) scene.remove(duelState.localPlayer.mesh);
+            if (duelState.remotePlayer) scene.remove(duelState.remotePlayer);
+            duelState.projectiles.forEach(p => scene.remove(p));
+            duelState.projectiles = [];
+            duelState.localPlayer = null;
+            duelState.remotePlayer = null;
+
+            // Show results
+            duelHud.classList.add('hidden');
+            const duelData = gameData.duel;
+            const myScore = duelData.players[userId].score;
+            const opponentId = currentGameState.playerIds.find(id => id !== userId);
+            const opponentScore = duelData.players[opponentId].score;
+
+            document.getElementById('final-duel-score').textContent = `${myScore} - ${opponentScore}`;
+            if (myScore > opponentScore) {
+                document.getElementById('duel-winner-text').textContent = "¡Has ganado!";
+            } else if (opponentScore > myScore) {
+                document.getElementById('duel-winner-text').textContent = "Has perdido...";
+            } else {
+                document.getElementById('duel-winner-text').textContent = "¡Es un empate!";
+            }
+            duelResultsModal.classList.add('active');
+        }
+
+        async function closeDuelResults() {
+            duelResultsModal.classList.remove('active');
+            // Only host resets the duel state in Firestore
+            if (currentGameState.isHost) {
+                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                await updateDoc(gameRef, { 'duel.status': 'inactive' });
+            }
+             // Restore normal UI
+            document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
+            versusScoreboard.classList.remove('hidden');
+        }
+        
+        function updateDuelHud() {
+             if (!duelState.active) return;
+             const opponentId = currentGameState.playerIds.find(id => id !== userId);
+             
+             const myInfo = duelState.players[userId];
+             const opponentInfo = duelState.players[opponentId];
+
+             if(!myInfo || !opponentInfo) return;
+
+             // Update Scores
+             duelScoreDisplay.textContent = `${myInfo.score} - ${opponentInfo.score}`;
+             
+             // Update Health Bars
+             player1HealthBar.style.width = `${(myInfo.health / CLASS_STATS[myInfo.class].maxHealth) * 100}%`;
+             player2HealthBar.style.width = `${(opponentInfo.health / CLASS_STATS[opponentInfo.class].maxHealth) * 100}%`;
+
+             // Update Names
+             document.getElementById('player1-name-hud').textContent = `Tú (${myInfo.class})`;
+             document.getElementById('player2-name-hud').textContent = `Oponente (${opponentInfo.class})`;
+        }
+        
+        function enableShooterControls() {
+            orbitControls.enabled = false;
+            pointerLockControls.lock();
+        }
+
+        function disableShooterControls() {
+            orbitControls.enabled = true;
+            pointerLockControls.unlock();
+        }
+
+        async function spawnProjectile(data, isLocal) {
+             const projectileGeo = new THREE.SphereGeometry(0.1, 8, 8);
+             const projectileMat = new THREE.MeshBasicMaterial({ color: 0xffeb3b });
+             const projectile = new THREE.Mesh(projectileGeo, projectileMat);
+             
+             projectile.position.copy(data.position);
+             projectile.userData.velocity = new THREE.Vector3().copy(data.velocity);
+             projectile.userData.owner = data.owner;
+             projectile.userData.id = data.id;
+             projectile.userData.range = data.range;
+             projectile.userData.spawnTime = Date.now();
+             
+             scene.add(projectile);
+             duelState.projectiles.push(projectile);
+
+             if (isLocal) { // Send to firestore
+                 const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                 await updateDoc(gameRef, {
+                    projectiles: arrayUnion(data)
+                 });
+             }
+        }
+        
+        // --- CREDIT LINE END ---
+        
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
             window.addEventListener('mousemove', showUI);
@@ -2172,9 +2614,16 @@
             aiTutorBtn.addEventListener('click', () => aiTutorModal.classList.add('active'));
             multiplayerBtn.addEventListener('click', () => {
                 if(currentGameState.inMultiplayer) {
-                    if(confirm("¿Quieres salir de la partida multijugador actual?")) {
+                    // Using custom modal instead of confirm
+                    const leaveModal = document.createElement('div');
+                    leaveModal.innerHTML = `<div class="modal active"><div class="modal-content" style="max-width: 400px; text-align: center;"><p style="margin-bottom: 1rem;">¿Quieres salir de la partida multijugador actual?</p><button class="modal-button" id="confirm-leave">Sí, salir</button><button class="modal-button secondary" id="cancel-leave">Cancelar</button></div></div>`;
+                    document.body.appendChild(leaveModal);
+                    document.getElementById('confirm-leave').onclick = () => {
                         leaveGame();
-                    }
+                        document.body.removeChild(leaveModal);
+                    };
+                    document.getElementById('cancel-leave').onclick = () => document.body.removeChild(leaveModal);
+
                 } else {
                     multiplayerModal.classList.add('active');
                     showMultiplayerView('multiplayer-initial');
@@ -2323,6 +2772,11 @@
             exportGameBtn.addEventListener('click', exportGame);
             importGameInput.addEventListener('change', importGame);
 
+            // Duel Minigame Listeners
+            duelModeBtn.addEventListener('click', handleDuelButtonClick);
+            classSelectionModal.addEventListener('click', handleClassSelection);
+            document.getElementById('close-duel-results-btn').addEventListener('click', closeDuelResults);
+
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
@@ -2341,7 +2795,12 @@
             }
 
             const delta = clock.getDelta();
-            controls.update();
+
+            if (duelState.active && duelState.localPlayer) {
+                 duelState.localPlayer.update(delta);
+            } else {
+                orbitControls.update();
+            }
             
             // Animate growing trees
             grove.forEach(tree => {
@@ -2357,6 +2816,46 @@
                     }
                 }
             });
+
+            // Update projectiles
+            for (let i = duelState.projectiles.length - 1; i >= 0; i--) {
+                const p = duelState.projectiles[i];
+                p.position.addScaledVector(p.userData.velocity, delta);
+                
+                // Collision check (only for local projectiles against remote player)
+                if (p.userData.owner === userId && duelState.remotePlayer) {
+                    const distance = p.position.distanceTo(duelState.remotePlayer.position);
+                    if (distance < 1.5) { // Hitbox size
+                         const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                         const myClass = duelState.players[userId].class;
+                         const damage = CLASS_STATS[myClass].weapon.damage;
+
+                         // Report hit to firestore
+                         const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                         updateDoc(gameRef, {
+                            [`duel.players.${opponentId}.health`]: increment(-damage),
+                            projectiles: arrayRemove({
+                                id: p.userData.id,
+                                owner: p.userData.owner,
+                                position: p.userData.initialPosition, // Use original data to remove
+                                velocity: p.userData.velocity,
+                                range: p.userData.range
+                            })
+                         });
+                         
+                         scene.remove(p);
+                         duelState.projectiles.splice(i, 1);
+                         continue; // Move to next projectile
+                    }
+                }
+
+                // Despawn projectile after time/range
+                if (Date.now() - p.userData.spawnTime > p.userData.range * 10) {
+                     scene.remove(p);
+                     duelState.projectiles.splice(i, 1);
+                }
+            }
+
 
             renderer.render(scene, camera);
         }
@@ -2417,7 +2916,142 @@
         
         main();
 
+        // --- Player Controller Class for Shooter Minigame ---
+        class PlayerController {
+            constructor(isLocal, playerClass) {
+                this.isLocal = isLocal;
+                this.classStats = CLASS_STATS[playerClass];
+                this.health = this.classStats.maxHealth;
+                this.lastShotTime = 0;
+
+                const playerGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+                const playerMat = new THREE.MeshStandardMaterial({ color: isLocal ? 0x4a90e2 : 0xe24a4a });
+                this.mesh = new THREE.Mesh(playerGeo, playerMat);
+                this.mesh.castShadow = true;
+                this.mesh.position.set(Math.random() * 20 - 10, 20, Math.random() * 20 - 10);
+                scene.add(this.mesh);
+
+                if(this.isLocal) {
+                    this.camera = pointerLockControls.getObject();
+                    this.velocity = new THREE.Vector3();
+                    this.direction = new THREE.Vector3();
+                    this.onGround = false;
+                    this.keys = {};
+                    this.mouse = { x: 0, y: 0, down: false };
+
+                    document.addEventListener('keydown', (e) => this.keys[e.code] = true);
+                    document.addEventListener('keyup', (e) => this.keys[e.code] = false);
+                    document.addEventListener('mousedown', () => this.mouse.down = true);
+                    document.addEventListener('mouseup', () => this.mouse.down = false);
+                }
+            }
+
+            async respawn() {
+                this.health = this.classStats.maxHealth;
+                const spawnX = Math.random() * 40 - 20;
+                const spawnZ = Math.random() * 40 - 20;
+                const spawnY = getHeightAt(spawnX, -spawnZ) + 10;
+                this.mesh.position.set(spawnX, spawnY, spawnZ);
+                this.velocity.set(0,0,0);
+                
+                if (this.isLocal) {
+                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                    await updateDoc(gameRef, {
+                        [`duel.players.${userId}.health`]: this.health
+                    });
+                }
+            }
+
+            update(delta) {
+                if (!this.isLocal) return;
+
+                // Handle player death/fall
+                if (this.mesh.position.y < -10 || this.health <= 0) {
+                    const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                    updateDoc(gameRef, {
+                        [`duel.players.${opponentId}.score`]: increment(1)
+                    });
+                    this.respawn();
+                    return;
+                }
+                
+                // Movement
+                const speed = this.classStats.speed;
+                this.direction.z = Number(this.keys['KeyW']) - Number(this.keys['KeyS']);
+                this.direction.x = Number(this.keys['KeyD']) - Number(this.keys['KeyA']);
+                this.direction.normalize();
+
+                const effectiveSpeed = this.keys['ShiftLeft'] ? speed * 1.5 : speed;
+
+                if (this.keys['KeyW'] || this.keys['KeyS']) this.velocity.z -= this.direction.z * effectiveSpeed * delta;
+                if (this.keys['KeyA'] || this.keys['KeyD']) this.velocity.x -= this.direction.x * effectiveSpeed * delta;
+                
+                // Gravity
+                this.velocity.y -= 30 * delta;
+
+                // Apply movement based on camera direction
+                this.mesh.translateX(this.velocity.x * delta);
+                this.mesh.translateZ(this.velocity.z * delta);
+                this.mesh.position.y += this.velocity.y * delta;
+                
+                // Ground check
+                const groundY = getHeightAt(this.mesh.position.x, -this.mesh.position.z) + 1.5;
+                if (this.mesh.position.y < groundY) {
+                    this.velocity.y = 0;
+                    this.mesh.position.y = groundY;
+                    this.onGround = true;
+                } else {
+                    this.onGround = false;
+                }
+
+                // Jump
+                if (this.keys['Space'] && this.onGround) {
+                    this.velocity.y = this.classStats.jumpHeight;
+                }
+                
+                // Damping
+                this.velocity.x *= 0.9;
+                this.velocity.z *= 0.9;
+                
+                // Shooting
+                if(this.mouse.down) {
+                    const now = Date.now();
+                    if(now - this.lastShotTime > this.classStats.weapon.fireRate) {
+                        this.lastShotTime = now;
+                        const direction = new THREE.Vector3();
+                        this.camera.getWorldDirection(direction);
+                        
+                        const spawnPos = this.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0));
+                        spawnPos.add(direction.clone().multiplyScalar(1));
+
+                        const projectileData = {
+                            id: THREE.MathUtils.generateUUID(),
+                            owner: userId,
+                            position: spawnPos,
+                            velocity: direction.multiplyScalar(this.classStats.weapon.projectileSpeed),
+                            range: this.classStats.weapon.range,
+                            initialPosition: spawnPos // Store for removal
+                        };
+                        spawnProjectile(projectileData, true);
+                    }
+                }
+
+                // Update camera position to follow player
+                this.camera.position.copy(this.mesh.position);
+
+                // Sync with Firestore (throttled)
+                if (Date.now() - (this.lastSyncTime || 0) > 100) { // Sync ~10 times/sec
+                    this.lastSyncTime = Date.now();
+                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                    updateDoc(gameRef, {
+                        [`duel.players.${userId}.position`]: {x: this.mesh.position.x, y: this.mesh.position.y, z: this.mesh.position.z},
+                        [`duel.players.${userId}.rotationY`]: this.mesh.rotation.y
+                    });
+                }
+            }
+        }
+
     </script>
 </body>
 </html>
-
