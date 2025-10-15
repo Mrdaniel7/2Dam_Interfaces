@@ -61,12 +61,13 @@
             color: rgba(255, 255, 255, 0.85);
             text-shadow: 0 0 20px rgba(0,0,0,0.5);
             user-select: none;
+            transition: opacity 0.4s ease;
         }
 
         .controls {
             position: absolute;
-            opacity: 0;
-            visibility: hidden;
+            opacity: 1; /* Make controls visible by default */
+            visibility: visible;
             transition: opacity 0.4s ease, visibility 0.4s ease;
             display: flex;
             gap: 15px;
@@ -76,25 +77,30 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-
-        /* Show controls on hover over the body/container */
-        body:hover .controls,
-        body:hover #timer-display,
-        body:hover #versus-scoreboard {
-            opacity: 1;
-            visibility: visible;
-        }
         
-        body:hover #sound-panel.active {
-             opacity: 1;
+        #versus-scoreboard {
+             position: absolute;
+            opacity: 1; /* Make controls visible by default */
             visibility: visible;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            display: flex;
+            gap: 30px;
+            background-color: var(--ui-bg);
+            padding: 10px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
-        /* For smaller screens (mobile), make controls always visible */
-        @media (max-width: 768px), (pointer: coarse) {
-            .controls, #timer-display, #versus-scoreboard {
-                opacity: 1;
-                visibility: visible;
+        /* Auto-hide UI on inactivity for devices with a mouse */
+        @media (pointer: fine) {
+            body.ui-hidden .controls,
+            body.ui-hidden #versus-scoreboard {
+                opacity: 0;
+                visibility: hidden;
             }
         }
 
@@ -483,23 +489,6 @@
             transition: opacity 0.3s;
         }
 
-        #versus-scoreboard {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 30px;
-            background-color: var(--ui-bg);
-            padding: 10px 20px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.4s ease, visibility 0.4s ease;
-        }
-
         .player-score {
             text-align: center;
         }
@@ -509,7 +498,13 @@
             margin-bottom: 5px;
         }
         
-        .player-score p {
+        .player-score-counters {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .player-score-counters p {
             font-size: 1.5rem;
             font-weight: bold;
         }
@@ -529,11 +524,17 @@
         <div id="versus-scoreboard" class="hidden">
             <div id="player1-score" class="player-score">
                 <h4 data-translate-key="host">Anfitrión</h4>
-                <p>0 🍅</p>
+                <div class="player-score-counters">
+                    <p class="pomodoro-count">0 🍅</p>
+                    <p class="tree-count">0 🌳</p>
+                </div>
             </div>
              <div id="player2-score" class="player-score">
                 <h4 data-translate-key="guest">Invitado</h4>
-                <p>0 🍅</p>
+                 <div class="player-score-counters">
+                    <p class="pomodoro-count">0 🍅</p>
+                    <p class="tree-count">0 🌳</p>
+                </div>
             </div>
         </div>
 
@@ -832,6 +833,9 @@
         const speedOptions = document.getElementById('speed-options');
         let speedTimeoutId = null;
 
+        // UI Inactivity
+        let inactivityTimer = null;
+
 
         // --- 3D SCENE SETUP ---
         let scene, camera, renderer, controls, floor, ambientLight, sunLight, skybox, sunMesh;
@@ -1024,8 +1028,7 @@
             state.currentTime--;
             updateTimerDisplay();
 
-            // Grow a tree every minute during a focus session.
-            if (state.mode === 'focus' && state.currentTime % 60 === 0 && state.currentTime > 0) {
+            if (state.mode === 'focus' && state.currentTime > 0 && state.currentTime % 60 === 0) {
                 growATree({ isSpecial: false, taskId: null });
             }
 
@@ -1035,7 +1038,7 @@
 
                 if (state.mode === 'focus') {
                     state.pomodoroCount++;
-                    await growATree({ isSpecial: false, taskId: null });
+                    await growATree({ isSpecial: false, taskId: null, isPomodoroCompletion: true }); 
                     
                     if (state.pomodoroCount > 0 && state.pomodoroCount % 4 === 0) {
                         switchMode('longBreak');
@@ -1263,7 +1266,7 @@
             grove = [];
         }
         
-        async function growATree({ isSpecial = false, taskId = null } = {}) {
+        async function growATree({ isSpecial = false, taskId = null, isPomodoroCompletion = false } = {}) {
             
             const radius = 10 + Math.random() * 25;
             const angle = Math.random() * Math.PI * 2;
@@ -1283,10 +1286,10 @@
                 scale: targetScale,
                 taskId: taskId,
                 owner: userId,
-                id: THREE.MathUtils.generateUUID()
+                id: THREE.MathUtils.generateUUID(),
+                isPomodoro: isPomodoroCompletion
             };
             
-            // If in a multiplayer game, send data to Firestore. Otherwise, grow locally.
             if (currentGameState.inMultiplayer) {
                 await updateFirestoreWithNewTree(treeData);
             } else {
@@ -1932,8 +1935,7 @@
 
                 const gameData = doc.data();
 
-                // When a guest joins, the host's modal closes automatically.
-                if (currentGameState.isHost && gameData.status === 'waiting' && gameData.guestId) {
+                if (currentGameState.isHost && gameData.guestId && !multiplayerWaitingView.classList.contains('hidden')) {
                     multiplayerModal.classList.remove('active');
                 }
                 
@@ -1941,7 +1943,7 @@
                     syncCoopGrove(gameData.sharedTrees || []);
                     versusScoreboard.classList.add('hidden');
                 } else if (gameData.mode === 'versus') {
-                    syncVersusState(gameData.players);
+                    syncVersusState(gameData);
                 }
             });
         }
@@ -1961,20 +1963,19 @@
             });
         }
         
-        function syncVersusState(playersData) {
+        function syncVersusState(gameData) {
             versusScoreboard.classList.remove('hidden');
+            const playersData = gameData.players;
             
             const myData = playersData[userId];
             const myTreesFromDb = myData?.trees || [];
 
-            // Add new trees from DB
             myTreesFromDb.forEach(treeData => {
                 if (!grove.some(localTree => localTree.userData.id === treeData.id)) {
                     addTreeToScene(treeData);
                 }
             });
 
-            // Remove local trees that are no longer in DB
             grove.slice().forEach(localTree => {
                 if (!myTreesFromDb.some(dbTree => dbTree.id === localTree.userData.id)) {
                     removeTreeObjectFromScene(localTree);
@@ -1982,20 +1983,22 @@
                 }
             });
             
-            // Update scoreboard
-            const hostId = currentGameState.isHost ? userId : Object.keys(playersData).find(id => id !== userId);
-            const guestId = currentGameState.isHost ? Object.keys(playersData).find(id => id !== userId) : userId;
+            const hostId = gameData.hostId;
+            const guestId = gameData.guestId;
 
-            const hostScore = (hostId && playersData[hostId]) ? playersData[hostId].pomodoros : 0;
-            const guestScore = (guestId && playersData[guestId]) ? playersData[guestId].pomodoros : 0;
+            const hostData = playersData[hostId] || { pomodoros: 0, trees: [] };
+            const guestData = guestId ? (playersData[guestId] || { pomodoros: 0, trees: [] }) : { pomodoros: 0, trees: [] };
 
-            document.querySelector('#player1-score p').textContent = `${hostScore} 🍅`;
-            document.querySelector('#player2-score p').textContent = `${guestScore} 🍅`;
-            document.querySelector('#player1-score h4').setAttribute('data-translate-key', 'host');
-            document.querySelector('#player2-score h4').setAttribute('data-translate-key', 'guest');
+            document.querySelector('#player1-score .pomodoro-count').textContent = `${hostData.pomodoros} 🍅`;
+            document.querySelector('#player1-score .tree-count').textContent = `${hostData.trees.length} 🌳`;
             
-            applyLanguage(state.currentLang);
+            document.querySelector('#player2-score .pomodoro-count').textContent = `${guestData.pomodoros} 🍅`;
+            document.querySelector('#player2-score .tree-count').textContent = `${guestData.trees.length} 🌳`;
+
+            document.querySelector('#player1-score h4').textContent = currentGameState.isHost ? `Tú (${translations[state.currentLang].host})` : translations[state.currentLang].host;
+            document.querySelector('#player2-score h4').textContent = currentGameState.isHost ? translations[state.currentLang].guest : `Tú (${translations[state.currentLang].guest})`;
         }
+
 
         async function updateFirestoreWithNewTree(treeData) {
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
@@ -2006,8 +2009,7 @@
                 const updates = {
                     [`players.${userId}.trees`]: arrayUnion(treeData)
                 };
-                // Only increment pomodoro count for non-task trees
-                if (!treeData.taskId) {
+                if (treeData.isPomodoro) {
                     updates[`players.${userId}.pomodoros`] = increment(1);
                 }
                 await updateDoc(gameRef, updates);
@@ -2070,9 +2072,22 @@
             };
             reader.readAsText(file);
         }
+        
+        function hideUI() {
+            document.body.classList.add('ui-hidden');
+        }
+
+        function showUI() {
+            document.body.classList.remove('ui-hidden');
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(hideUI, 10000); // 10 seconds
+        }
 
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
+            window.addEventListener('mousemove', showUI);
+            document.body.addEventListener('mouseleave', hideUI);
+
             playPauseBtn.addEventListener('click', () => {
                 startAudioContext();
                 if (state.isRunning) {
@@ -2338,6 +2353,8 @@
                 loadTasks();
                 setupEventListeners();
                 animate();
+
+                showUI(); // Start inactivity timer
 
                 const savedLang = localStorage.getItem('language') || 'es';
                 applyLanguage(savedLang);
