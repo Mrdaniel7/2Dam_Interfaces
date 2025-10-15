@@ -1032,7 +1032,7 @@
             if (state.mode === 'focus' && state.currentTime > 0) {
                 let shouldGrow = false;
                 if (currentGameState.inMultiplayer && currentGameState.mode === 'cooperative') {
-                    const interval = currentGameState.playerCount >= 3 ? 120 : 60;
+                    const interval = currentGameState.playerCount >= 3 ? 120 : 60; // 2 minutes if 3+ players
                     if (state.currentTime % interval === 0) shouldGrow = true;
                 } else {
                     if (state.currentTime % 60 === 0) shouldGrow = true;
@@ -1930,36 +1930,35 @@
                 return;
             }
             
-            // New player joining
-            if (gameData.status === 'waiting') {
-                const playerCount = Object.keys(gameData.players).length;
-                if (gameData.mode === 'cooperative' && playerCount >= 5) {
-                    alert("Esta partida cooperativa ya está llena (5 jugadores).");
-                    return;
-                }
-                if (gameData.mode === 'versus' && playerCount >= 2) {
-                    alert("Esta partida de lucha ya está llena (2 jugadores).");
-                    return;
-                }
+            const playerCount = Object.keys(gameData.players).length;
 
-                await updateDoc(gameRef, {
-                    [`players.${userId}`]: { pomodoros: 0, trees: [] }
-                });
-
-                // If this is the first guest, update status
-                if (playerCount === 1) {
-                    await updateDoc(gameRef, { status: 'active' });
-                }
-
-                listenToGameChanges(gameId);
-                currentGameState.inMultiplayer = true;
-                currentGameState.isHost = false;
-                currentGameState.gameId = gameId;
-                currentGameState.mode = gameData.mode;
-                multiplayerModal.classList.remove('active');
-            } else {
-                alert("La partida ya ha comenzado o está llena.");
+            if (gameData.mode === 'cooperative' && playerCount >= 5) {
+                alert("Esta partida cooperativa ya está llena (5 jugadores).");
+                return;
             }
+            if (gameData.mode === 'versus' && playerCount >= 2) {
+                alert("Esta partida de lucha ya está llena (2 jugadores).");
+                return;
+            }
+            if (gameData.mode === 'versus' && gameData.status === 'active') {
+                 alert("La partida ya ha comenzado o está llena.");
+                 return;
+            }
+
+            await updateDoc(gameRef, {
+                [`players.${userId}`]: { pomodoros: 0, trees: [] }
+            });
+
+            if (playerCount === 1) {
+                await updateDoc(gameRef, { status: 'active' });
+            }
+
+            listenToGameChanges(gameId);
+            currentGameState.inMultiplayer = true;
+            currentGameState.isHost = false;
+            currentGameState.gameId = gameId;
+            currentGameState.mode = gameData.mode;
+            multiplayerModal.classList.remove('active');
         }
 
         function listenToGameChanges(gameId) {
