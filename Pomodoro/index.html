@@ -2179,9 +2179,25 @@
 
         // --- INITIALIZATION ---
         async function main() {
+            // --- IMPORTANTE PARA GITHUB PAGES ---
+            // El código original funciona en un entorno especial que provee la configuración.
+            // Para que funcione en GitHub Pages, necesitas tu propia configuración de Firebase.
+            // 1. Ve a https://firebase.google.com/ y crea un proyecto.
+            // 2. En tu proyecto, ve a "Project Settings" y crea una "Web App".
+            // 3. Firebase te dará un objeto `firebaseConfig`. Cópialo y pégalo aquí abajo.
+            const deployedFirebaseConfig = {
+              apiKey: "AIzaSyDigVtE9WexPsg0gOvjcsuYVO_FX-r__7o",
+              authDomain: "interfaces-4bc20.firebaseapp.com",
+              projectId: "interfaces-4bc20",
+              storageBucket: "interfaces-4bc20.appspot.com",
+              messagingSenderId: "1007775332703",
+              appId: "1:1007775332703:web:d28af78317f63cfaa75eea",
+              measurementId: "G-2XGZ3JEY94"
+            };
+
             const firebaseConfig = typeof __firebase_config !== 'undefined' 
                 ? JSON.parse(__firebase_config)
-                : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
+                : deployedFirebaseConfig;
 
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
