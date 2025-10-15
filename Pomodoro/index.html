@@ -119,6 +119,13 @@
         #speed-controls {
             bottom: 20px;
             left: 20px;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        #speed-options {
+            display: flex;
+            gap: 5px;
         }
 
         .speed-button {
@@ -128,7 +135,7 @@
             height: 44px;
         }
 
-        .speed-button.active, .sound-button.active {
+        .speed-button.active {
             background-color: var(--primary-color);
             color: white;
         }
@@ -187,6 +194,11 @@
             gap: 10px;
             width: 100%;
             justify-content: space-around;
+        }
+        
+        .sound-button.active {
+             background-color: var(--primary-color);
+            color: white;
         }
 
         #volume-slider {
@@ -359,7 +371,7 @@
         .dropdown-menu {
             position: absolute;
             top: 54px;
-            width: 180px;
+            width: 220px;
             display: flex;
             flex-direction: column;
             align-items: stretch;
@@ -373,6 +385,7 @@
         }
         #language-dropdown {
             right: 0;
+            width: 180px;
         }
         #main-menu-dropdown {
             left: 0;
@@ -410,6 +423,24 @@
             position: relative;
         }
         
+        .menu-option.mobile-only {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .menu-option.mobile-only {
+                display: flex;
+            }
+            #top-right-controls .relative, /* Language button container */
+            #fullscreen-btn-container {
+                display: none;
+            }
+        }
+        
+        #game-code-display-container {
+            position: relative;
+        }
+
         #game-code-display {
             background-color: rgba(0,0,0,0.4);
             padding: 15px;
@@ -419,14 +450,31 @@
             font-weight: bold;
             letter-spacing: 4px;
             margin: 20px 0;
-            cursor: pointer;
             border: 1px dashed rgba(255,255,255,0.3);
         }
-
-        #game-code-display:hover {
-            background-color: rgba(0,0,0,0.6);
-        }
         
+        #copy-code-btn {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        #copy-code-btn:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        #copy-code-btn svg {
+             width: 20px;
+            height: 20px;
+            fill: var(--text-color);
+        }
+
         #game-code-copy-feedback {
             text-align: center;
             font-size: 0.9rem;
@@ -513,9 +561,11 @@
                 </div>
             </div>
 
-            <button id="fullscreen-btn" class="control-button" title="Pantalla Completa">
-                <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>
-            </button>
+            <div id="fullscreen-btn-container">
+                <button id="fullscreen-btn" class="control-button" title="Pantalla Completa">
+                    <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>
+                </button>
+            </div>
         </div>
 
         <div id="top-left-controls" class="controls">
@@ -544,15 +594,25 @@
                        <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                        <span data-translate-key="music">Música</span>
                    </button>
+                   <button id="language-menu-btn" class="menu-option mobile-only">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+                        <span data-translate-key="language">Idioma</span>
+                    </button>
+                    <button id="fullscreen-menu-btn" class="menu-option mobile-only">
+                         <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>
+                        <span data-translate-key="fullscreen">Pantalla Completa</span>
+                    </button>
                 </div>
             </div>
         </div>
         
         <div id="speed-controls" class="controls">
-            <button class="speed-button active" data-speed="1">x1</button>
-            <button class="speed-button" data-speed="2">x2</button>
-            <button class="speed-button" data-speed="5">x5</button>
-            <button class="speed-button" data-speed="10">x10</button>
+             <button id="speed-toggle-btn" class="speed-button active" data-speed="1">x1</button>
+            <div id="speed-options" class="hidden">
+                <button class="speed-button" data-speed="2">x2</button>
+                <button class="speed-button" data-speed="5">x5</button>
+                <button class="speed-button" data-speed="10">x10</button>
+            </div>
         </div>
 
         <div id="sound-panel" class="controls">
@@ -659,7 +719,12 @@
             <div id="multiplayer-waiting" class="hidden">
                 <h2 data-translate-key="waitingForPlayer">Esperando jugador...</h2>
                 <p style="text-align:center; margin-bottom:1rem;" data-translate-key="shareCode">Comparte este código con un amigo:</p>
-                <div id="game-code-display" title="Haz clic para copiar">CÓDIGO</div>
+                <div id="game-code-display-container">
+                    <div id="game-code-display">CÓDIGO</div>
+                    <button id="copy-code-btn" title="Copiar Código">
+                        <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg>
+                    </button>
+                </div>
                 <p id="game-code-copy-feedback" data-translate-key="copied">¡Copiado!</p>
             </div>
             
@@ -734,6 +799,9 @@
         // Main Menu
         const mainMenuBtn = document.getElementById('main-menu-btn');
         const mainMenuDropdown = document.getElementById('main-menu-dropdown');
+        const languageMenuBtn = document.getElementById('language-menu-btn');
+        const fullscreenMenuBtn = document.getElementById('fullscreen-menu-btn');
+
 
         // Tasks
         const newTaskInput = document.getElementById('new-task-input');
@@ -753,9 +821,16 @@
         const gameCodeDisplay = document.getElementById('game-code-display');
         const gameCodeInput = document.getElementById('game-code-input');
         const joinGameSubmitBtn = document.getElementById('join-game-submit-btn');
+        const copyCodeBtn = document.getElementById('copy-code-btn');
         const versusScoreboard = document.getElementById('versus-scoreboard');
         const exportGameBtn = document.getElementById('export-game-btn');
         const importGameInput = document.getElementById('import-game-input');
+
+        // Speed Controls
+        const speedControls = document.getElementById('speed-controls');
+        const speedToggleBtn = document.getElementById('speed-toggle-btn');
+        const speedOptions = document.getElementById('speed-options');
+        let speedTimeoutId = null;
 
 
         // --- 3D SCENE SETUP ---
@@ -950,20 +1025,17 @@
             updateTimerDisplay();
 
             // Grow a tree every minute during a focus session.
-            // This triggers when the timer shows xx:00, including the final 00:00.
-            if (state.mode === 'focus' && state.currentTime % 60 === 0 && state.currentTime < state.workDuration) {
-                // No need to await, let it grow in the background
+            if (state.mode === 'focus' && state.currentTime % 60 === 0 && state.currentTime > 0) {
                 growATree({ isSpecial: false, taskId: null });
             }
 
             if (state.currentTime <= 0) {
-                // IMPORTANT FIX: Pause timer immediately to prevent multiple triggers
                 pauseTimer(); 
                 playNotification();
 
                 if (state.mode === 'focus') {
                     state.pomodoroCount++;
-                    // The final tree is grown by the logic above when currentTime becomes 0.
+                    await growATree({ isSpecial: false, taskId: null });
                     
                     if (state.pomodoroCount > 0 && state.pomodoroCount % 4 === 0) {
                         switchMode('longBreak');
@@ -1246,12 +1318,9 @@
         function changeSpeed(newSpeed) {
             state.timeScale = newSpeed;
 
-            document.querySelectorAll('#speed-controls .speed-button').forEach(btn => {
-                btn.classList.remove('active');
-                if (parseFloat(btn.dataset.speed) === newSpeed) {
-                    btn.classList.add('active');
-                }
-            });
+            document.querySelectorAll('#speed-controls .speed-button').forEach(btn => btn.classList.remove('active'));
+            speedToggleBtn.textContent = `x${newSpeed}`;
+            speedToggleBtn.classList.add('active');
 
             if (state.isRunning) {
                 pauseTimer();
@@ -1463,6 +1532,8 @@
                  multiplayer: "Multijugador",
                  biome: "Bioma",
                  music: "Música",
+                 language: "Idioma",
+                 fullscreen: "Pantalla Completa",
                  createGame: "Crear Partida",
                  joinGame: "Unirse a Partida",
                  selectMode: "Seleccionar Modo",
@@ -1496,6 +1567,8 @@
                  multiplayer: "Multiplayer",
                  biome: "Biome",
                  music: "Music",
+                 language: "Language",
+                 fullscreen: "Fullscreen",
                  createGame: "Create Game",
                  joinGame: "Join Game",
                  selectMode: "Select Mode",
@@ -1528,7 +1601,9 @@
                 longBreakLabel: "Pause Longue",
                 multiplayer: "Multijoueur",
                 biome: "Biome",
-                music: "Musique"
+                music: "Musique",
+                language: "Langue",
+                fullscreen: "Plein écran",
              },
               zh: {
                 aiTutorTitle: "✨ AI导师",
@@ -1544,7 +1619,9 @@
                 longBreakLabel: "长时间休息",
                 multiplayer: "多人游戏",
                 biome: "生物群系",
-                music: "音乐"
+                music: "音乐",
+                language: "语言",
+                fullscreen: "全屏",
             },
             hi: {
                 aiTutorTitle: "✨ एआई ट्यूटर",
@@ -1560,7 +1637,9 @@
                 longBreakLabel: "लंबा विराम",
                 multiplayer: "मल्टीप्लेयर",
                 biome: "बायोम",
-                music: "संगीत"
+                music: "संगीत",
+                language: "भाषा",
+                fullscreen: "पूर्ण स्क्रीन",
             }
         };
 
@@ -1853,6 +1932,7 @@
 
                 const gameData = doc.data();
 
+                // When a guest joins, the host's modal closes automatically.
                 if (currentGameState.isHost && gameData.status === 'waiting' && gameData.guestId) {
                     multiplayerModal.classList.remove('active');
                 }
@@ -2003,7 +2083,7 @@
             });
             resetBtn.addEventListener('click', resetTimer);
             
-            fullscreenBtn.addEventListener('click', () => {
+            const toggleFullscreen = () => {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen().catch(err => {
                         console.error(`Error al intentar activar el modo de pantalla completa: ${err.message} (${err.name})`);
@@ -2013,7 +2093,14 @@
                         document.exitFullscreen();
                     }
                 }
+            };
+
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            fullscreenMenuBtn.addEventListener('click', () => {
+                toggleFullscreen();
+                mainMenuDropdown.classList.add('hidden');
             });
+
 
             // Modals
             settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
@@ -2052,10 +2139,21 @@
 
             biomeBtn.addEventListener('click', changeBiome);
             
-            document.getElementById('speed-controls').addEventListener('click', (e) => {
+            speedToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                speedOptions.classList.toggle('hidden');
+                if (!speedOptions.classList.contains('hidden')) {
+                    if (speedTimeoutId) clearTimeout(speedTimeoutId);
+                    speedTimeoutId = setTimeout(() => speedOptions.classList.add('hidden'), 10000);
+                }
+            });
+
+            speedOptions.addEventListener('click', (e) => {
                 if (e.target.matches('.speed-button')) {
                     const newSpeed = parseFloat(e.target.dataset.speed);
                     changeSpeed(newSpeed);
+                    speedOptions.classList.add('hidden');
+                    if (speedTimeoutId) clearTimeout(speedTimeoutId);
                 }
             });
             
@@ -2089,14 +2187,21 @@
                 if (mainMenuDropdown && !mainMenuDropdown.contains(e.target) && !mainMenuBtn.contains(e.target)) {
                     mainMenuDropdown.classList.add('hidden');
                 }
+                if (speedOptions && !speedControls.contains(e.target)) {
+                    speedOptions.classList.add('hidden');
+                    if(speedTimeoutId) clearTimeout(speedTimeoutId);
+                }
             });
             
             aiTutorGenerateBtn.addEventListener('click', getTutorExplanation);
             
-            languageBtn.addEventListener('click', (e) => {
+            const toggleLanguageDropdown = (e) => {
                 e.stopPropagation();
                 languageDropdown.classList.toggle('hidden');
-            });
+                mainMenuDropdown.classList.add('hidden');
+            };
+            languageBtn.addEventListener('click', toggleLanguageDropdown);
+            languageMenuBtn.addEventListener('click', toggleLanguageDropdown);
 
             document.querySelectorAll('#language-dropdown .menu-option').forEach(option => {
                 option.addEventListener('click', () => {
@@ -2143,7 +2248,7 @@
                 const code = gameCodeInput.value.trim().toUpperCase();
                 if(code) joinGame(code);
             });
-            gameCodeDisplay.addEventListener('click', () => {
+            copyCodeBtn.addEventListener('click', () => {
                 navigator.clipboard.writeText(gameCodeDisplay.textContent).then(() => {
                     const feedback = document.getElementById('game-code-copy-feedback');
                     feedback.style.opacity = '1';
@@ -2249,5 +2354,4 @@
     </script>
 </body>
 </html>
-
 
