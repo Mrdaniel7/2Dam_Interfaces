@@ -854,6 +854,7 @@
             gameId: null,
             mode: null,
             unsubscribe: null,
+            playerCount: 1,
         };
 
         function init3D() {
@@ -1028,8 +1029,17 @@
             state.currentTime--;
             updateTimerDisplay();
 
-            if (state.mode === 'focus' && state.currentTime > 0 && state.currentTime % 60 === 0) {
-                growATree({ isSpecial: false, taskId: null });
+            if (state.mode === 'focus' && state.currentTime > 0) {
+                let shouldGrow = false;
+                if (currentGameState.inMultiplayer && currentGameState.mode === 'cooperative') {
+                    const interval = currentGameState.playerCount >= 3 ? 120 : 60;
+                    if (state.currentTime % interval === 0) shouldGrow = true;
+                } else {
+                    if (state.currentTime % 60 === 0) shouldGrow = true;
+                }
+                if (shouldGrow) {
+                    growATree({ isSpecial: false, taskId: null });
+                }
             }
 
             if (state.currentTime <= 0) {
@@ -1874,8 +1884,6 @@
                     mode: mode,
                     status: 'waiting',
                     hostId: userId,
-                    guestId: null,
-                    sharedTrees: [],
                     players: {
                         [userId]: { pomodoros: 0, trees: [] }
                     }
@@ -1903,20 +1911,54 @@
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
             const gameSnap = await getDoc(gameRef);
 
-            if (gameSnap.exists() && gameSnap.data().status === 'waiting') {
+            if (!gameSnap.exists()) {
+                alert("Partida no encontrada.");
+                return;
+            }
+
+            const gameData = gameSnap.data();
+
+            // Rejoining logic
+            if (gameData.players && gameData.players[userId]) {
+                console.log("Rejoining game...");
+                listenToGameChanges(gameId);
+                currentGameState.inMultiplayer = true;
+                currentGameState.isHost = gameData.hostId === userId;
+                currentGameState.gameId = gameId;
+                currentGameState.mode = gameData.mode;
+                multiplayerModal.classList.remove('active');
+                return;
+            }
+            
+            // New player joining
+            if (gameData.status === 'waiting') {
+                const playerCount = Object.keys(gameData.players).length;
+                if (gameData.mode === 'cooperative' && playerCount >= 5) {
+                    alert("Esta partida cooperativa ya está llena (5 jugadores).");
+                    return;
+                }
+                if (gameData.mode === 'versus' && playerCount >= 2) {
+                    alert("Esta partida de lucha ya está llena (2 jugadores).");
+                    return;
+                }
+
                 await updateDoc(gameRef, {
-                    guestId: userId,
-                    status: 'active',
                     [`players.${userId}`]: { pomodoros: 0, trees: [] }
                 });
+
+                // If this is the first guest, update status
+                if (playerCount === 1) {
+                    await updateDoc(gameRef, { status: 'active' });
+                }
+
                 listenToGameChanges(gameId);
                 currentGameState.inMultiplayer = true;
                 currentGameState.isHost = false;
                 currentGameState.gameId = gameId;
-                currentGameState.mode = gameSnap.data().mode;
+                currentGameState.mode = gameData.mode;
                 multiplayerModal.classList.remove('active');
             } else {
-                alert("Partida no encontrada o ya está llena.");
+                alert("La partida ya ha comenzado o está llena.");
             }
         }
 
@@ -1934,8 +1976,10 @@
                 }
 
                 const gameData = doc.data();
+                currentGameState.playerCount = Object.keys(gameData.players).length;
 
-                if (currentGameState.isHost && gameData.guestId && !multiplayerWaitingView.classList.contains('hidden')) {
+
+                if (currentGameState.isHost && gameData.status === 'active' && !multiplayerWaitingView.classList.contains('hidden')) {
                     multiplayerModal.classList.remove('active');
                 }
                 
@@ -1984,10 +2028,10 @@
             });
             
             const hostId = gameData.hostId;
-            const guestId = gameData.guestId;
+            const guestId = Object.keys(playersData).find(id => id !== hostId);
 
             const hostData = playersData[hostId] || { pomodoros: 0, trees: [] };
-            const guestData = guestId ? (playersData[guestId] || { pomodoros: 0, trees: [] }) : { pomodoros: 0, trees: [] };
+            const guestData = (guestId && playersData[guestId]) ? playersData[guestId] : { pomodoros: 0, trees: [] };
 
             document.querySelector('#player1-score .pomodoro-count').textContent = `${hostData.pomodoros} 🍅`;
             document.querySelector('#player1-score .tree-count').textContent = `${hostData.trees.length} 🌳`;
@@ -1995,8 +2039,11 @@
             document.querySelector('#player2-score .pomodoro-count').textContent = `${guestData.pomodoros} 🍅`;
             document.querySelector('#player2-score .tree-count').textContent = `${guestData.trees.length} 🌳`;
 
-            document.querySelector('#player1-score h4').textContent = currentGameState.isHost ? `Tú (${translations[state.currentLang].host})` : translations[state.currentLang].host;
-            document.querySelector('#player2-score h4').textContent = currentGameState.isHost ? translations[state.currentLang].guest : `Tú (${translations[state.currentLang].guest})`;
+            const hostName = translations[state.currentLang].host;
+            const guestName = translations[state.currentLang].guest;
+
+            document.querySelector('#player1-score h4').textContent = (userId === hostId) ? `Tú (${hostName})` : hostName;
+            document.querySelector('#player2-score h4').textContent = (userId === guestId) ? `Tú (${guestName})` : (guestId ? guestName : '...');
         }
 
 
@@ -2026,6 +2073,7 @@
                 gameId: null,
                 mode: null,
                 unsubscribe: null,
+                playerCount: 1,
             };
             localStorage.removeItem('focusGroveLastGame');
             versusScoreboard.classList.add('hidden');
@@ -2079,7 +2127,7 @@
 
         function showUI() {
             document.body.classList.remove('ui-hidden');
-            clearTimeout(inactivityTimer);
+            if(inactivityTimer) clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(hideUI, 10000); // 10 seconds
         }
 
@@ -2087,6 +2135,8 @@
         function setupEventListeners() {
             window.addEventListener('mousemove', showUI);
             document.body.addEventListener('mouseleave', hideUI);
+            window.addEventListener('touchstart', showUI);
+
 
             playPauseBtn.addEventListener('click', () => {
                 startAudioContext();
