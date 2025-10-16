@@ -38,7 +38,7 @@
             height: 100%;
         }
         
-        #bg.playing-shooter {
+        body.duel-active #bg {
             cursor: crosshair;
         }
 
@@ -65,7 +65,20 @@
             color: rgba(255, 255, 255, 0.85);
             text-shadow: 0 0 20px rgba(0,0,0,0.5);
             user-select: none;
-            transition: opacity 0.4s ease;
+            transition: all 0.4s ease;
+        }
+        
+        #timer-display.timer-display-duel {
+            top: 20px;
+            left: auto;
+            right: 20px;
+            transform: none;
+            font-size: 2rem;
+            background-color: var(--ui-bg);
+            padding: 5px 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .controls {
@@ -101,9 +114,9 @@
 
         /* Auto-hide UI on inactivity for devices with a mouse */
         @media (pointer: fine) {
-            body.ui-hidden .controls,
-            body.ui-hidden #versus-scoreboard,
-            body.ui-hidden #duel-hud {
+            body:not(.duel-active).ui-hidden .controls,
+            body:not(.duel-active).ui-hidden #versus-scoreboard,
+            body:not(.duel-active).ui-hidden #duel-hud {
                 opacity: 0;
                 visibility: hidden;
             }
@@ -518,24 +531,44 @@
         #player2-score h4 { color: var(--secondary-color); }
 
         /* Shooter Minigame Styles */
-        #duel-mode-btn {
+        #crosshair {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            background-color: var(--secondary-color);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 24px;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(226, 74, 74, 0.4);
-            transition: all 0.2s ease;
+            pointer-events: none;
+            display: none;
+        }
+        body.duel-active #crosshair {
+            display: block;
+        }
+        
+        #duel-mode-btn {
+            position: absolute;
+            top: 65%; /* Positioned below the main timer */
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: linear-gradient(145deg, #4b0082, #2e8b57); /* Purple to Green gradient */
+            color: white;
+            border: 2px solid #333;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 0 10px #2e8b57, 0 0 20px #2e8b57, inset 0 0 5px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
             z-index: 50;
+            text-shadow: 1px 1px 3px black;
         }
         #duel-mode-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(226, 74, 74, 0.5);
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 0 15px #3cff9c, 0 0 30px #3cff9c, inset 0 0 5px rgba(0,0,0,0.5);
+            border-color: #3cff9c;
         }
         
         #class-selection-modal .modal-content {
@@ -572,7 +605,7 @@
         }
 
         #duel-hud {
-            gap: 15px;
+            gap: 30px;
             align-items: center;
             font-weight: bold;
         }
@@ -597,8 +630,40 @@
             border-radius: 7px;
             transition: width 0.3s ease;
         }
-        #player1-health-bar { background-color: var(--primary-color); }
-        #player2-health-bar { background-color: var(--secondary-color); }
+        
+        #remote-player-health-bar { background-color: var(--secondary-color); }
+
+        #remote-player-duel-hud {
+            text-align: left;
+        }
+
+        #local-player-duel-hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background-color: var(--ui-bg);
+            padding: 10px 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 250px;
+        }
+
+        #local-player-duel-hud h4 {
+            margin-bottom: 8px;
+            font-size: 1rem;
+            color: var(--primary-color);
+        }
+
+        #local-player-duel-hud .health-bar-container {
+            width: 100%;
+            height: 25px;
+        }
+        
+        #local-player-health-bar {
+            background-color: var(--primary-color);
+        }
+
 
         #duel-results-modal .modal-content {
             text-align: center;
@@ -606,6 +671,16 @@
         #duel-winner-text {
             font-size: 2rem;
             margin-bottom: 1rem;
+        }
+        
+        #credit-line {
+            user-select: none;
+            color: rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        #credit-line:hover {
+            color: rgba(255, 255, 255, 0.7);
         }
 
     </style>
@@ -615,7 +690,9 @@
     <canvas id="bg"></canvas>
 
     <div id="ui-container">
+        <div id="crosshair">+</div>
         <div id="timer-display">25:00</div>
+        <button id="duel-mode-btn" class="hidden">🧟‍♂️ Modo Zombi 🧟‍♂️</button>
         
         <div id="versus-scoreboard" class="hidden">
             <div id="player1-score" class="player-score">
@@ -635,16 +712,27 @@
         </div>
 
         <!-- DUEL HUD -->
+        <div id="local-player-duel-hud" class="hidden">
+            <h4 id="local-player-name-hud">Tú</h4>
+            <div class="health-bar-container">
+                <div id="local-player-health-bar" class="health-bar"></div>
+            </div>
+        </div>
+
         <div id="duel-hud" class="hidden">
-            <div id="player1-info" style="text-align: right;">
-                <h4 id="player1-name-hud">Jugador 1</h4>
-                <div class="health-bar-container"><div id="player1-health-bar" class="health-bar"></div></div>
-            </div>
             <div id="duel-score">0 - 0</div>
-            <div id="player2-info">
-                <h4 id="player2-name-hud">Jugador 2</h4>
-                <div class="health-bar-container"><div id="player2-health-bar" class="health-bar"></div></div>
+            <div id="remote-player-duel-hud">
+                <h4 id="remote-player-name-hud">Oponente</h4>
+                <div class="health-bar-container">
+                    <div id="remote-player-health-bar" class="health-bar"></div>
+                </div>
             </div>
+        </div>
+
+        <!-- ZOMBIE MODE HUD -->
+        <div id="zombie-hud" class="hidden" style="position: absolute; top: 80px; left: 20px; background-color: var(--ui-bg); padding: 10px 15px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <h4 style="margin-bottom: 5px;"><span data-translate-key="zombieRound">Ronda:</span> <span id="zombie-round-display">1</span></h4>
+            <h4><span data-translate-key="zombieKills">Bajas:</span> <span id="zombie-kills-display">0</span></h4>
         </div>
 
 
@@ -659,7 +747,6 @@
         </div>
 
         <div id="top-right-controls" class="controls">
-             <button id="duel-mode-btn" class="hidden">⚔️ ¡Duelo! ⚔️</button>
             <button id="ai-tutor-btn" class="control-button font-bold text-lg" title="Tutor IA">AI</button>
             
             <div class="relative">
@@ -706,7 +793,7 @@
                        <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                        <span data-translate-key="music">Música</span>
                    </button>
-                  <button id="language-menu-btn" class="menu-option mobile-only">
+                <button id="language-menu-btn" class="menu-option mobile-only">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
                         <span data-translate-key="language">Idioma</span>
                     </button>
@@ -719,11 +806,13 @@
         </div>
         
         <div id="speed-controls" class="controls">
-             <button id="speed-toggle-btn" class="speed-button active" data-speed="1">x1</button>
+             <button id="speed-toggle-btn" class="speed-button" data-speed="1">x1</button>
             <div id="speed-options" class="hidden">
+                <button class="speed-button" data-speed="1">x1</button>
                 <button class="speed-button" data-speed="2">x2</button>
                 <button class="speed-button" data-speed="5">x5</button>
                 <button class="speed-button" data-speed="10">x10</button>
+                <button class="speed-button" data-speed="100">x100</button>
             </div>
         </div>
 
@@ -857,7 +946,7 @@
     <div id="class-selection-modal" class="modal">
         <div class="modal-content">
             <h2>Selecciona tu Clase</h2>
-            <p style="text-align:center; margin-bottom: 2rem; color: #aaa;">Elige tu estilo de combate para el duelo.</p>
+            <p style="text-align:center; margin-bottom: 2rem; color: #aaa;">Elige tu estilo de combate.</p>
             <div id="class-selection-container">
                 <div class="class-card" data-class="scout">
                     <h3>🏃‍♂️ Explorador</h3>
@@ -888,6 +977,25 @@
             <h2 id="duel-winner-text">¡Duelo Terminado!</h2>
             <p id="final-duel-score" style="font-size: 1.5rem; margin-bottom: 1rem;">0 - 0</p>
             <button id="close-duel-results-btn" class="modal-button">Continuar</button>
+        </div>
+    </div>
+
+    <!-- ZOMBIE DEATH MODAL -->
+    <div id="zombie-death-modal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <h2>¡Has muerto!</h2>
+            <p style="margin-bottom: 1rem;">Has sobrevivido hasta la <span id="death-modal-round">1</span> con <span id="death-modal-kills">0</span> bajas.</p>
+            <button id="zombie-respawn-btn" class="modal-button">Reintentar desde el principio</button>
+            <button id="zombie-exit-btn" class="modal-button secondary">Salir del modo</button>
+        </div>
+    </div>
+
+    <!-- ZOMBIE RESULTS MODAL -->
+    <div id="zombie-results-modal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <h2>¡Tiempo agotado!</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 1rem;">Has llegado a la <strong id="results-modal-round">1</strong> con <strong id="results-modal-kills">0</strong> bajas.</p>
+            <button id="close-zombie-results-btn" class="modal-button">Continuar</button>
         </div>
     </div>
 
@@ -981,9 +1089,10 @@
         const duelModeBtn = document.getElementById('duel-mode-btn');
         const classSelectionModal = document.getElementById('class-selection-modal');
         const duelHud = document.getElementById('duel-hud');
+        const localPlayerDuelHud = document.getElementById('local-player-duel-hud');
         const duelScoreDisplay = document.getElementById('duel-score');
-        const player1HealthBar = document.getElementById('player1-health-bar');
-        const player2HealthBar = document.getElementById('player2-health-bar');
+        const localPlayerHealthBar = document.getElementById('local-player-health-bar');
+        const remotePlayerHealthBar = document.getElementById('remote-player-health-bar');
         const duelResultsModal = document.getElementById('duel-results-modal');
 
         // Speed Controls
@@ -1018,6 +1127,9 @@
             playerIds: [],
         };
 
+        // --- SINGLE PLAYER DUEL TEST ---
+        let singlePlayerDuelEnabled = true;
+
         // --- SHOOTER MINIGAME STATE ---
         const duelState = {
             active: false,
@@ -1028,16 +1140,31 @@
             remotePlayer: null,
         };
         const CLASS_STATS = {
-            scout:  { maxHealth: 75,  speed: 9, jumpHeight: 12, weapon: { damage: 8,  fireRate: 150, range: 80, projectileSpeed: 100 } },
+            scout:   { maxHealth: 75,  speed: 9, jumpHeight: 12, weapon: { damage: 8,  fireRate: 150, range: 80, projectileSpeed: 100 } },
             soldier:{ maxHealth: 100, speed: 7, jumpHeight: 10, weapon: { damage: 15, fireRate: 300, range: 120, projectileSpeed: 80 } },
-            tank:   { maxHealth: 150, speed: 5, jumpHeight: 8,  weapon: { damage: 35, fireRate: 800, range: 40, projectileSpeed: 60 } }
+            tank:    { maxHealth: 150, speed: 5, jumpHeight: 8,  weapon: { damage: 35, fireRate: 800, range: 40, projectileSpeed: 60 } }
         };
+        const zombieModeState = {
+            active: false,
+            round: 0,
+            kills: 0,
+            zombies: [],
+            zombiesToSpawn: 0,
+            waveTimer: 0,
+            waveInterval: 30, // 30 seconds between waves if not cleared
+        };
+        
+        let preZombieState = {
+            mode: 'focus',
+            currentTime: 0
+        };
+        let zombieModeStartTime = 0;
+
 
         function init3D() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 20, 50);
-
+            
             renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -1049,6 +1176,8 @@
             orbitControls.minDistance = 5;
             orbitControls.maxDistance = 80; 
             orbitControls.maxPolarAngle = Math.PI / 2.1;
+            camera.position.set(0, 20, 50);
+
 
             pointerLockControls = new PointerLockControls(camera, document.body);
             scene.add(pointerLockControls.getObject());
@@ -1178,6 +1307,7 @@
         }
         
         function formatTime(seconds) {
+            seconds = Math.round(seconds);
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
             return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -1189,6 +1319,17 @@
         }
 
         async function switchMode(newMode) {
+            if (zombieModeState.active) {
+                endZombieMode(false);
+            }
+            if (duelState.active) {
+                // To be safe, also handle duel mode exit if user changes timer mode
+                if (currentGameState.isHost) {
+                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                     updateDoc(gameRef, { 'duel.status': 'finished' });
+                }
+            }
+
             state.mode = newMode;
             switch (newMode) {
                 case 'focus':
@@ -1207,11 +1348,29 @@
                 await updateDoc(gameRef, { [`players.${userId}.status`]: newMode });
             }
             updateTimerDisplay();
+            updateSinglePlayerDuelButtonVisibility();
         }
 
         async function timerTick() {
             state.currentTime--;
             updateTimerDisplay();
+
+            if (state.currentTime <= 0) {
+                if (zombieModeState.active) {
+                    endZombieMode();
+                    return;
+                }
+                if (duelState.active) {
+                    if(currentGameState.inMultiplayer) {
+                        if(currentGameState.isHost) {
+                            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                            await updateDoc(gameRef, { 'duel.status': 'finished' });
+                        }
+                    }
+                    return;
+                }
+            }
+
 
             if (state.mode === 'focus' && state.currentTime > 0) {
                 let shouldGrow = false;
@@ -1226,7 +1385,7 @@
                 }
             }
 
-            if (state.currentTime <= 0) {
+            if (!duelState.active && state.currentTime <= 0) {
                 pauseTimer(); 
                 playNotification();
 
@@ -1272,6 +1431,9 @@
 
         async function resetTimer() {
             pauseTimer();
+            if (zombieModeState.active) {
+                endZombieMode(false);
+            }
             if (!currentGameState.inMultiplayer || currentGameState.mode !== 'cooperative') {
                 clearGrove();
             }
@@ -1281,11 +1443,16 @@
         }
 
         // --- 3D FOREST LOGIC ---
+        // ===== VALIDACIÓN ADICIONAL EN getHeightAt =====
+        // Reemplaza tu función getHeightAt con esta versión más segura:
         function getHeightAt(x, y) {
             const floorSize = 200;
+            // Clamp a los límites del mapa
+            if (Math.abs(x) > floorSize / 2 || Math.abs(y) > floorSize / 2) {
+                return 10; // Altura por defecto fuera del mapa
+            }
             const detailScale = 0.1;
             const peakHeight = 20;
-
             let height = 0;
             height += simplex.noise2D(x * detailScale * 0.5, y * detailScale * 0.5) * 0.5;
             height += simplex.noise2D(x * detailScale * 1.5, y * detailScale * 1.5) * 0.25;
@@ -1295,8 +1462,10 @@
 
             const yNormalized = (y + floorSize / 2) / floorSize;
             const slopeHeight = peakHeight * Math.pow(yNormalized, 2);
+            
             return height * peakHeight * 0.5 + slopeHeight;
         }
+
 
         function addVegetation() {
             shrubsGroup.clear();
@@ -1349,7 +1518,7 @@
             const tree = new THREE.Group();
             tree.userData.treeType = 'pine';
             const trunkHeight = 5 + (Math.random() - 0.5) * 2;
-            const trunkGeo = new THREE.CylinderGeometry(0.2, 0.4, trunkHeight, 8);
+            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, trunkHeight, 8); // Wider trunk
             trunkGeo.translate(0, trunkHeight / 2, 0);
             const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e23 });
             const trunk = new THREE.Mesh(trunkGeo, trunkMat);
@@ -1375,7 +1544,7 @@
             const tree = new THREE.Group();
             tree.userData.treeType = 'broadleaf';
             const trunkHeight = 4 + Math.random() * 3;
-            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.35, trunkHeight, 8);
+            const trunkGeo = new THREE.CylinderGeometry(0.5, 0.6, trunkHeight, 8); // Wider trunk
             trunkGeo.translate(0, trunkHeight / 2, 0);
             const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6a4e43 });
             const trunk = new THREE.Mesh(trunkGeo, trunkMat);
@@ -1398,7 +1567,7 @@
             const tree = new THREE.Group();
              tree.userData.treeType = 'special';
             const trunkHeight = 5 + (Math.random() - 0.5) * 2;
-            const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, trunkHeight, 8);
+            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, trunkHeight, 8); // Wider trunk
             trunkGeo.translate(0, trunkHeight / 2, 0);
             const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4f3a30 });
             const trunk = new THREE.Mesh(trunkGeo, trunkMat);
@@ -1432,9 +1601,9 @@
 
         function createTree(type = 'random') {
              if (type === 'random') {
-                const treeType = Math.random();
-                if (treeType < 0.6) return createPineTree();
-                return createBroadleafTree();
+                 const treeType = Math.random();
+                 if (treeType < 0.6) return createPineTree();
+                 return createBroadleafTree();
              }
              if(type === 'pine') return createPineTree();
              if(type === 'broadleaf') return createBroadleafTree();
@@ -1462,10 +1631,9 @@
         
         async function growATree({ isSpecial = false, taskId = null, isPomodoroCompletion = false } = {}) {
             
-            const radius = 10 + Math.random() * 25;
-            const angle = Math.random() * Math.PI * 2;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
+            const spawnRange = 190; // El tamaño del suelo es 200, dejamos un pequeño margen
+            const x = (Math.random() - 0.5) * spawnRange;
+            const z = (Math.random() - 0.5) * spawnRange;
             const y = getHeightAt(x,-z);
 
             if (y <= 0.2) return; // Don't grow tree if position is invalid
@@ -1516,8 +1684,12 @@
             state.timeScale = newSpeed;
 
             document.querySelectorAll('#speed-controls .speed-button').forEach(btn => btn.classList.remove('active'));
+            
+            const activeBtn = document.querySelector(`#speed-controls .speed-button[data-speed="${newSpeed}"]`);
+            if(activeBtn) activeBtn.classList.add('active');
+
             speedToggleBtn.textContent = `x${newSpeed}`;
-            speedToggleBtn.classList.add('active');
+
 
             if (state.isRunning) {
                 pauseTimer();
@@ -1540,14 +1712,12 @@
             skybox.material.uniforms.topColor.value.set(biome.zenith);
             skybox.material.uniforms.bottomColor.value.set(biome.horizon);
             sunMesh.material.color.set(biome.sunColor);
-            // This line was causing an error, ambientLight is now defined in init3D()
-            // It will be updated there. Let's update it here as well.
+            
             scene.traverse(obj => { if(obj.isAmbientLight) obj.color.set(biome.ambient); });
             sunLight.color.set(biome.sun);
         }
 
         // --- AUDIO ---
-        // This section is large, keeping it as is to avoid breaking it.
         let soundSources = {};
         let notificationSynth;
         let currentSound = 'mute';
@@ -1555,106 +1725,59 @@
 
         function initAudio() {
             const masterGain = new Tone.Gain(1).toDestination();
-            const rainSynth = new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, sustain: 1 }, volume: -12 });
-            const rainGain = new Tone.Gain(0).connect(masterGain);
-            rainSynth.connect(rainGain);
+            const rainSynth = new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, sustain: 1 }, volume: -12 }).toDestination();
             soundSources.rain = {
-                start: () => {
-                    try { if (rainSynth.state !== 'started') rainSynth.triggerAttack(); } catch(e){}
-                    rainGain.gain.rampTo(1, 0.8);
-                },
-                stop: () => {
-                    rainGain.gain.rampTo(0, 0.6);
-                },
-                setVolume: (v) => { try { rainSynth.volume.value = v; } catch(e){} }
+                start: () => { if (rainSynth.state !== 'started') rainSynth.triggerAttack(); },
+                stop: () => { rainSynth.triggerRelease(); }
             };
-            const whiteSynth = new Tone.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.01, sustain: 1 }, volume: -24 });
-            const whiteGain = new Tone.Gain(0).connect(masterGain);
-            whiteSynth.connect(whiteGain);
+            
+            const whiteSynth = new Tone.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.01, sustain: 1 }, volume: -24 }).toDestination();
             soundSources.white_noise = {
-                start: () => {
-                    try { if (whiteSynth.state !== 'started') whiteSynth.triggerAttack(); } catch(e){}
-                    whiteGain.gain.rampTo(1, 0.6);
-                },
-                stop: () => {
-                    whiteGain.gain.rampTo(0, 0.4);
-                },
-                setVolume: (v) => { try { whiteSynth.volume.value = v; } catch(e){} }
+                start: () => { if (whiteSynth.state !== 'started') whiteSynth.triggerAttack(); },
+                stop: () => { whiteSynth.triggerRelease(); }
             };
-            const forestGain = new Tone.Gain(0).connect(masterGain);
-            const wind = new Tone.Noise('brown');
-            const windFilter = new Tone.Filter(800, 'lowpass');
-            const windLFO = new Tone.LFO(0.06, 500, 2000).start();
-            windLFO.connect(windFilter.frequency);
-            const windGain = new Tone.Gain(0).connect(forestGain);
-            wind.chain(windFilter, windGain);
-            const windChorus = new Tone.Chorus(0.1, 2.5, 0.5).start();
-            windFilter.connect(windChorus);
-            windChorus.connect(forestGain);
-            const birdReverb = new Tone.Reverb({ decay: 2.4, wet: 0.25 }).connect(forestGain);
-            const birdLoops = [];
-            const birdSynths = [];
-            for (let i = 0; i < 4; i++) {
-                const synth = new Tone.FMSynth({
-                    harmonicity: 1.6 + Math.random() * 0.8,
-                    modulationIndex: 8 + Math.random() * 6,
-                    oscillator: { type: 'sine' },
-                    envelope: { attack: 0.001, decay: 0.1 + Math.random() * 0.25, sustain: 0.05, release: 0.2 + Math.random() * 0.4 },
-                    volume: -20 - Math.random() * 6
-                });
-                const pan = new Tone.Panner(Math.random() * 2 - 1);
-                const gain = new Tone.Gain(0).connect(birdReverb);
-                synth.chain(pan, gain);
-                birdSynths.push({ synth, pan, gain });
-                const loop = new Tone.Loop(time => {
-                    if (Math.random() < 0.45) {
-                        const baseFreq = 600 + Math.random() * 800;
-                        const detune = (Math.random() - 0.5) * 200;
-                        const dur = 0.06 + Math.random() * 0.18;
-                        try { synth.set({ detune }); } catch(e){}
-                        try { pan.pan.rampTo(Math.random() * 2 - 1, 0.2); } catch(e){}
-                        try { synth.triggerAttackRelease(baseFreq, dur, time); } catch(e){}
-                    }
-                }, 0.6 + Math.random() * 1.4);
-                birdLoops.push(loop);
-            }
-            try { wind.start(); } catch(e){}
-            soundSources.forest = {
-                start: async () => {
-                    if (Tone.Transport.state !== 'started') await Tone.Transport.start();
-                    windGain.gain.cancelScheduledValues();
-                    windGain.gain.rampTo(1, 1.0);
-                    forestGain.gain.cancelScheduledValues();
-                    forestGain.gain.rampTo(1, 1.2);
-                    birdSynths.forEach((b, idx) => {
-                        b.gain.gain.cancelScheduledValues();
-                        b.gain.gain.rampTo(0.7 + Math.random() * 0.6, 0.6 + idx * 0.05);
-                    });
-                    birdLoops.forEach((l, idx) => {
-                        const when = Tone.now() + idx * 0.15;
-                        try { if (l.state !== 'started') l.start(when); } catch(e){}
-                    });
-                },
-                stop: () => {
-                    forestGain.gain.cancelScheduledValues();
-                    forestGain.gain.rampTo(0, 0.8);
-                    windGain.gain.cancelScheduledValues();
-                    windGain.gain.rampTo(0, 0.6);
-                    birdSynths.forEach(b => {
-                        b.gain.gain.cancelScheduledValues();
-                        b.gain.gain.rampTo(0, 0.5);
-                    });
-                },
-                setVolume: (v) => {
-                    birdSynths.forEach(b => { try { b.synth.volume.value = -12 - (100 - v) * 0.24; } catch(e){} });
-                    windGain.gain.rampTo(0.25 * (v / 50), 0.2);
-                }
-            };
+
             notificationSynth = new Tone.Synth({
                 oscillator: { type: 'sine' },
                 envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
                 volume: -10
             }).toDestination();
+
+            // --- NEW SOUND EFFECTS ---
+            soundSources.shot_pistol = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }, volume: -11.5 }).toDestination();
+            soundSources.shot_rifle = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }, volume: -9.5 }).toDestination();
+            soundSources.shot_shotgun = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.2 }, volume: -6.5 }).toDestination();
+            soundSources.player_hit = new Tone.FMSynth({ harmonicity: 0.5, modulationIndex: 10, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 }, volume: -5 }).toDestination();
+            
+            // Sound Pools for Zombies to prevent audio scheduling errors
+            const ZOMBIE_DEATH_POOL_SIZE = 4;
+            soundSources.zombie_deaths = [];
+            for(let i=0; i<ZOMBIE_DEATH_POOL_SIZE; i++){
+                soundSources.zombie_deaths.push(new Tone.FMSynth({ harmonicity: 0.2, modulationIndex: 20, envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.4 }, volume: -8 }).toDestination());
+            }
+            soundSources.zombie_death_index = 0;
+
+            const ZOMBIE_STEP_POOL_SIZE = 8;
+            soundSources.zombie_steps = [];
+            for (let i = 0; i < ZOMBIE_STEP_POOL_SIZE; i++) {
+                 soundSources.zombie_steps.push(new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 2, envelope: { attack: 0.001, decay: 0.1, sustain: 0 }, volume: -15 }).toDestination());
+            }
+            soundSources.zombie_step_index = 0;
+
+            const ZOMBIE_GROWL_POOL_SIZE = 5;
+            soundSources.zombie_growls = [];
+            for (let i = 0; i < ZOMBIE_GROWL_POOL_SIZE; i++) {
+                soundSources.zombie_growls.push(new Tone.AMSynth({
+                    harmonicity: 0.8 + Math.random() * 0.4,
+                    envelope: { attack: 0.1, decay: 0.5, sustain: 0.2, release: 0.5 },
+                    modulation: { type: "sawtooth" },
+                    modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.1 },
+                    volume: -10
+                }).toDestination());
+            }
+            soundSources.zombie_growl_index = 0;
+
+
             soundSources._internal = { masterGain };
             updateVolume();
         }
@@ -1718,74 +1841,78 @@
         let tasks = [];
         const translations = {
              es: {
-                  aiTutorTitle: "✨ Tutor IA",
-                  aiTutorDescription: "¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.",
-                  aiTutorPlaceholder: "Ej: ¿Por qué el cielo es azul?",
-                  aiTutorGenerateBtn: "Explicar Concepto",
-                  aiTutorLoading: "Pensando...",
-                  todoTitle: "Lista de Tareas",
-                  todoPlaceholder: "Añadir nueva tarea...",
-                  settingsTitle: "Configuración",
-                  focusLabel: "Enfoque",
-                  shortBreakLabel: "Descanso Corto",
-                  longBreakLabel: "Descanso Largo",
-                  multiplayer: "Multijugador",
-                  biome: "Bioma",
-                  music: "Música",
-                  language: "Idioma",
-                  fullscreen: "Pantalla Completa",
-                  createGame: "Crear Partida",
-                  joinGame: "Unirse a Partida",
-                  selectMode: "Seleccionar Modo",
-                  cooperativeMode: "Cooperativo",
-                  versusMode: "Lucha",
-                  back: "Volver",
-                  waitingForPlayer: "Esperando jugador...",
-                  shareCode: "Comparte este código con un amigo:",
-                  copied: "¡Copiado!",
-                  enterCode: "Introduce el código de la partida",
-                  join: "Unirse",
-                  host: "Anfitrión",
-                  guest: "Invitado",
-                  saveLoadGame: "Guardar/Cargar Partida",
-                  saveLoadDesc: "Exporta el estado de tu partida multijugador para continuarla más tarde.",
-                  exportGame: "Exportar Partida",
-                  importGame: "Importar Partida (Anfitrión)"
+                 aiTutorTitle: "✨ Tutor IA",
+                 aiTutorDescription: "¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.",
+                 aiTutorPlaceholder: "Ej: ¿Por qué el cielo es azul?",
+                 aiTutorGenerateBtn: "Explicar Concepto",
+                 aiTutorLoading: "Pensando...",
+                 todoTitle: "Lista de Tareas",
+                 todoPlaceholder: "Añadir nueva tarea...",
+                 settingsTitle: "Configuración",
+                 focusLabel: "Enfoque",
+                 shortBreakLabel: "Descanso Corto",
+                 longBreakLabel: "Descanso Largo",
+                 multiplayer: "Multijugador",
+                 biome: "Bioma",
+                 music: "Música",
+                 language: "Idioma",
+                 fullscreen: "Pantalla Completa",
+                 createGame: "Crear Partida",
+                 joinGame: "Unirse a Partida",
+                 selectMode: "Seleccionar Modo",
+                 cooperativeMode: "Cooperativo",
+                 versusMode: "Lucha",
+                 back: "Volver",
+                 waitingForPlayer: "Esperando jugador...",
+                 shareCode: "Comparte este código con un amigo:",
+                 copied: "¡Copiado!",
+                 enterCode: "Introduce el código de la partida",
+                 join: "Unirse",
+                 host: "Anfitrión",
+                 guest: "Invitado",
+                 saveLoadGame: "Guardar/Cargar Partida",
+                 saveLoadDesc: "Exporta el estado de tu partida multijugador para continuarla más tarde.",
+                 exportGame: "Exportar Partida",
+                 importGame: "Importar Partida (Anfitrión)",
+                 zombieRound: "Ronda:",
+                 zombieKills: "Bajas:"
              },
              en: {
-                  aiTutorTitle: "✨ AI Tutor",
-                  aiTutorDescription: "Stuck on a problem? Describe it and the AI will give you a simple explanation.",
-                  aiTutorPlaceholder: "E.g., Why is the sky blue?",
-                  aiTutorGenerateBtn: "Explain Concept",
-                  aiTutorLoading: "Thinking...",
-                  todoTitle: "To-Do List",
-                  todoPlaceholder: "Add a new task...",
-                  settingsTitle: "Settings",
-                  focusLabel: "Focus",
-                  shortBreakLabel: "Short Break",
-                  longBreakLabel: "Long Break",
-                  multiplayer: "Multiplayer",
-                  biome: "Biome",
-                  music: "Music",
-                  language: "Language",
-                  fullscreen: "Fullscreen",
-                  createGame: "Create Game",
-                  joinGame: "Join Game",
-                  selectMode: "Select Mode",
-                  cooperativeMode: "Cooperative",
-                  versusMode: "Versus",
-                  back: "Back",
-                  waitingForPlayer: "Waiting for player...",
-                  shareCode: "Share this code with a friend:",
-                  copied: "Copied!",
-                  enterCode: "Enter the game code",
-                  join: "Join",
-                  host: "Host",
-                  guest: "Guest",
-                  saveLoadGame: "Save/Load Game",
-                  saveLoadDesc: "Export your multiplayer game state to continue it later.",
-                  exportGame: "Export Game",
-                  importGame: "Import Game (Host)"
+                 aiTutorTitle: "✨ AI Tutor",
+                 aiTutorDescription: "Stuck on a problem? Describe it and the AI will give you a simple explanation.",
+                 aiTutorPlaceholder: "E.g., Why is the sky blue?",
+                 aiTutorGenerateBtn: "Explain Concept",
+                 aiTutorLoading: "Thinking...",
+                 todoTitle: "To-Do List",
+                 todoPlaceholder: "Add a new task...",
+                 settingsTitle: "Settings",
+                 focusLabel: "Focus",
+                 shortBreakLabel: "Short Break",
+                 longBreakLabel: "Long Break",
+                 multiplayer: "Multiplayer",
+                 biome: "Biome",
+                 music: "Music",
+                 language: "Language",
+                 fullscreen: "Fullscreen",
+                 createGame: "Create Game",
+                 joinGame: "Join Game",
+                 selectMode: "Select Mode",
+                 cooperativeMode: "Cooperative",
+                 versusMode: "Versus",
+                 back: "Back",
+                 waitingForPlayer: "Waiting for player...",
+                 shareCode: "Share this code with a friend:",
+                 copied: "Copied!",
+                 enterCode: "Enter the game code",
+                 join: "Join",
+                 host: "Host",
+                 guest: "Guest",
+                 saveLoadGame: "Save/Load Game",
+                 saveLoadDesc: "Export your multiplayer game state to continue it later.",
+                 exportGame: "Export Game",
+                 importGame: "Import Game (Host)",
+                 zombieRound: "Round:",
+                 zombieKills: "Kills:"
              },
              fr: { // (Añadir más traducciones si es necesario)
                  aiTutorTitle: "✨ Tuteur IA",
@@ -1804,6 +1931,8 @@
                  music: "Musique",
                  language: "Langue",
                  fullscreen: "Plein écran",
+                 zombieRound: "Manche:",
+                 zombieKills: "Éliminations:"
              },
              zh: {
                  aiTutorTitle: "✨ AI导师",
@@ -1822,6 +1951,8 @@
                  music: "音乐",
                  language: "语言",
                  fullscreen: "全屏",
+                 zombieRound: "回合:",
+                 zombieKills: "击杀:"
              },
              hi: {
                  aiTutorTitle: "✨ एआई ट्यूटर",
@@ -1840,6 +1971,8 @@
                  music: "संगीत",
                  language: "भाषा",
                  fullscreen: "पूर्ण स्क्रीन",
+                 zombieRound: "राउंड:",
+                 zombieKills: "हत्या:"
              }
         };
 
@@ -2026,16 +2159,18 @@
         // --- CREDIT LINE ---
         function addCreditLine() {
             if (document.getElementById('credit-line')) return;
-            const credit = document.createElement('div');
+            const credit = document.createElement('a');
             credit.id = 'credit-line';
             credit.textContent = 'Hecho por Daniel Terroba Alcala';
+            credit.href = 'https://github.com/Mrdaniel7';
+            credit.target = '_blank';
+            credit.rel = 'noopener noreferrer';
             credit.style.position = 'fixed';
             credit.style.bottom = '10px';
             credit.style.right = '10px';
             credit.style.fontSize = '12px';
-            credit.style.color = 'rgba(255, 255, 255, 0.3)';
-            credit.style.pointerEvents = 'none';
             credit.style.zIndex = '1001';
+            credit.style.pointerEvents = 'auto'; // Make it clickable
             document.body.appendChild(credit);
         }
         
@@ -2224,14 +2359,16 @@
             const hostId = gameData.hostId;
             const guestId = Object.keys(playersData).find(id => id !== hostId);
 
-            const hostData = playersData[hostId] || { pomodoros: 0, trees: [] };
-            const guestData = (guestId && playersData[guestId]) ? playersData[guestId] : { pomodoros: 0, trees: [] };
+            const hostData = playersData[hostId];
+            const guestData = guestId ? playersData[guestId] : null;
 
-            document.querySelector('#player1-score .pomodoro-count').textContent = `${hostData.pomodoros} 🍅`;
-            document.querySelector('#player1-score .tree-count').textContent = `${hostData.trees.length} 🌳`;
+            // Update host score
+            document.querySelector('#player1-score .pomodoro-count').textContent = `${hostData ? hostData.pomodoros : 0} 🍅`;
+            document.querySelector('#player1-score .tree-count').textContent = `${hostData && hostData.trees ? hostData.trees.length : 0} 🌳`;
             
-            document.querySelector('#player2-score .pomodoro-count').textContent = `${guestData.pomodoros} 🍅`;
-            document.querySelector('#player2-score .tree-count').textContent = `${guestData.trees.length} 🌳`;
+            // Update guest score
+            document.querySelector('#player2-score .pomodoro-count').textContent = `${guestData ? guestData.pomodoros : 0} 🍅`;
+            document.querySelector('#player2-score .tree-count').textContent = `${guestData && guestData.trees ? guestData.trees.length : 0} 🌳`;
 
             const hostName = translations[state.currentLang].host;
             const guestName = translations[state.currentLang].guest;
@@ -2240,9 +2377,13 @@
             document.querySelector('#player2-score h4').textContent = (userId === guestId) ? `Tú (${guestName})` : (guestId ? guestName : '...');
             
             // Check if both players are on break to show duel button
-            const p1Status = hostData.status;
-            const p2Status = guestData.status;
-            if (currentGameState.isHost && (p1Status === 'shortBreak' || p1Status === 'longBreak') && (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
+            const p1Status = hostData ? hostData.status : null;
+            const p2Status = guestData ? guestData.status : null;
+
+            if (currentGameState.isHost && 
+                (p1Status === 'shortBreak' || p1Status === 'longBreak') && 
+                (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
+                duelModeBtn.textContent = '⚔️ ¡Duelo! ⚔️';
                 duelModeBtn.classList.remove('hidden');
             } else {
                 duelModeBtn.classList.add('hidden');
@@ -2334,7 +2475,38 @@
             inactivityTimer = setTimeout(hideUI, 10000); // 10 seconds
         }
 
+        // --- SINGLE PLAYER DUEL TEST ---
+        function updateSinglePlayerDuelButtonVisibility() {
+            if (!currentGameState.inMultiplayer && singlePlayerDuelEnabled) {
+                if (state.mode === 'shortBreak' || state.mode === 'longBreak') {
+                    duelModeBtn.textContent = '🧟‍♂️ Modo Zombi 🧟‍♂️';
+                    duelModeBtn.classList.remove('hidden');
+                } else {
+                    duelModeBtn.classList.add('hidden');
+                }
+            } else if (!currentGameState.inMultiplayer) { 
+                duelModeBtn.classList.add('hidden');
+            }
+        }
+
         // --- SHOOTER MINIGAME LOGIC ---
+
+        function playRemoteShotSound(playerId) {
+            if (!isAudioReady || !duelState.players[playerId]) return;
+            
+            const playerClass = duelState.players[playerId].class;
+            switch (playerClass) {
+                case 'scout':
+                    soundSources.shot_pistol.triggerAttack();
+                    break;
+                case 'soldier':
+                    soundSources.shot_rifle.triggerAttack();
+                    break;
+                case 'tank':
+                    soundSources.shot_shotgun.triggerAttack();
+                    break;
+            }
+        }
 
         function syncDuelState(gameData) {
             const newDuelStatus = gameData.duel?.status || 'inactive';
@@ -2362,18 +2534,30 @@
                 const duelData = gameData.duel;
                 classSelectionModal.classList.remove('active');
                 versusScoreboard.classList.add('hidden');
-                duelHud.classList.remove('hidden');
-                
-                // Initialize players
-                for(const id in duelData.players) {
-                    const playerData = duelData.players[id];
+            
+                // Initialize players with checks and default values
+                for (const id in duelData.players) {
+                    const playerData = duelData.players[id] || {};
+                    const cls = playerData.class || 'soldier'; // fallback if class is missing
                     duelState.players[id] = {
-                        class: playerData.class,
-                        health: CLASS_STATS[playerData.class].maxHealth,
-                        score: playerData.score,
+                        class: cls,
+                        health: (CLASS_STATS[cls] && CLASS_STATS[cls].maxHealth) ? CLASS_STATS[cls].maxHealth : 100,
+                        score: playerData.score || 0,
                     };
                 }
-                startDuelScene(gameData);
+            
+                // Start scene with protection to prevent any errors from breaking the main loop
+                try {
+                    startDuelScene(gameData);
+                } catch (err) {
+                    console.error("Error starting duel scene:", err);
+                    // Revert state so the app doesn't hang
+                    duelState.status = 'inactive';
+                    duelState.active = false;
+                    // Restore basic UI
+                    document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
+                    duelModeBtn.classList.remove('hidden');
+                }
             }
             
             // Sync active game state (positions, health, etc.)
@@ -2384,13 +2568,20 @@
                         const remoteData = duelData.players[id];
                         if (remoteData.position) {
                            duelState.remotePlayer.position.copy(remoteData.position);
+                           // In FPS, we care about the opponent's camera rotation for their body's direction
                            duelState.remotePlayer.rotation.y = remoteData.rotationY;
                         }
                         duelState.players[id].health = remoteData.health;
                         duelState.players[id].score = remoteData.score;
-                    } else if (id === userId) { // Update local player health if changed by opponent
-                         duelState.players[id].health = duelData.players[id].health;
-                         duelState.localPlayer.health = duelData.players[id].health;
+                    } else if (id === userId && duelState.localPlayer) { // Update local player health if changed by opponent
+                        const newHealth = duelData.players[id].health;
+                        const oldHealth = duelState.localPlayer.health;
+                        if (newHealth < oldHealth) {
+                            const damageTaken = oldHealth - newHealth;
+                            duelState.localPlayer.takeDamage(damageTaken);
+                        } else {
+                            duelState.localPlayer.health = newHealth;
+                        }
                     }
                 }
                 updateDuelHud();
@@ -2398,12 +2589,13 @@
                  // Sync projectiles
                 if (duelData.projectiles) {
                      duelData.projectiles.forEach(p => {
-                        // Avoid creating a projectile we already know about
-                        if (!duelState.projectiles.some(proj => proj.userData.id === p.id)) {
+                         // Avoid creating a projectile we already know about
+                         if (!duelState.projectiles.some(proj => proj.userData.id === p.id)) {
                              if (p.owner !== userId) { // Only spawn projectiles from the other player
-                                spawnProjectile(p, false);
+                                 spawnProjectile(p, false);
+                                 playRemoteShotSound(p.owner);
                              }
-                        }
+                         }
                      });
                 }
             }
@@ -2415,16 +2607,20 @@
         }
 
         async function handleDuelButtonClick() {
-            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-            const initialDuelState = {
-                status: 'selecting',
-                players: {
-                    [currentGameState.playerIds[0]]: { score: 0, health: 100 },
-                    [currentGameState.playerIds[1]]: { score: 0, health: 100 }
-                },
-                projectiles: []
-            };
-            await updateDoc(gameRef, { duel: initialDuelState });
+            if (currentGameState.inMultiplayer) {
+                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                const initialDuelState = {
+                    status: 'selecting',
+                    players: {
+                        [currentGameState.playerIds[0]]: { score: 0, health: 100 },
+                        [currentGameState.playerIds[1]]: { score: 0, health: 100 }
+                    },
+                    projectiles: []
+                };
+                await updateDoc(gameRef, { duel: initialDuelState });
+            } else if (singlePlayerDuelEnabled) {
+                classSelectionModal.classList.add('active');
+            }
         }
         
         async function handleClassSelection(e) {
@@ -2432,41 +2628,66 @@
             if (!card) return;
             
             const className = card.dataset.class;
-            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-            await updateDoc(gameRef, { 
-                [`duel.players.${userId}.class`]: className,
-                [`duel.players.${userId}.health`]: CLASS_STATS[className].maxHealth
-            });
 
-            // If I'm the host, check if both players have selected a class
-            if (currentGameState.isHost) {
-                const gameSnap = await getDoc(gameRef);
-                const duelData = gameSnap.data().duel;
-                const p1Class = duelData.players[currentGameState.playerIds[0]].class;
-                const p2Class = duelData.players[currentGameState.playerIds[1]].class;
-                if (p1Class && p2Class) {
-                    await updateDoc(gameRef, { 'duel.status': 'active' });
+            if (currentGameState.inMultiplayer) {
+                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                await updateDoc(gameRef, { 
+                    [`duel.players.${userId}.class`]: className,
+                    [`duel.players.${userId}.health`]: CLASS_STATS[className].maxHealth
+                });
+
+                // If I'm the host, check if both players have selected a class
+                if (currentGameState.isHost) {
+                    const gameSnap = await getDoc(gameRef);
+                    const duelData = gameSnap.data().duel;
+                    const p1Class = duelData.players[currentGameState.playerIds[0]].class;
+                    const p2Class = duelData.players[currentGameState.playerIds[1]].class;
+                    if (p1Class && p2Class) {
+                        await updateDoc(gameRef, { 'duel.status': 'active' });
+                    }
                 }
+            } else if (singlePlayerDuelEnabled) {
+                // CAMBIO: Ahora la selección de clase inicia el modo zombis
+                classSelectionModal.classList.remove('active');
+                startZombieMode(className);
             }
         }
         
         function startDuelScene(gameData) {
             duelState.active = true;
-            canvas.classList.add('playing-shooter');
+            document.body.classList.add('duel-active');
+            document.body.classList.remove('ui-hidden');
+
             // Hide normal UI, show duel UI
             document.querySelectorAll('.controls').forEach(c => c.classList.add('hidden'));
+            timerDisplay.classList.add('timer-display-duel');
+            duelHud.classList.remove('hidden');
+            localPlayerDuelHud.classList.remove('hidden');
 
-            // Create Player Controllers
+            if (!state.isRunning) {
+                startTimer();
+            }
+
             const opponentId = currentGameState.playerIds.find(id => id !== userId);
-            
-            const myClass = gameData.duel.players[userId].class;
-            const opponentClass = gameData.duel.players[opponentId].class;
-            
-            duelState.localPlayer = new PlayerController(true, myClass);
-            duelState.remotePlayer = new PlayerController(false, opponentClass).mesh;
-            scene.add(duelState.remotePlayer);
-            
-            enableShooterControls();
+
+            const myClass = (gameData.duel.players?.[userId]?.class) || 'soldier';
+            const opponentClass = (gameData.duel.players?.[opponentId]?.class) || 'soldier';
+
+            try {
+                duelState.localPlayer = new PlayerController(true, myClass);
+                duelState.remotePlayer = new PlayerController(false, opponentClass).mesh;
+
+                duelState.localPlayer.respawn();
+                enableShooterControls();
+            } catch (err) {
+                console.error("Failed to create PlayerControllers:", err);
+                if (duelState.localPlayer && duelState.localPlayer.dispose) duelState.localPlayer.dispose();
+                if (duelState.remotePlayer) scene.remove(duelState.remotePlayer);
+                duelState.localPlayer = null;
+                duelState.remotePlayer = null;
+                duelState.active = false;
+                duelState.status = 'inactive';
+            }
         }
 
         async function endDuelScene(gameData) {
@@ -2475,12 +2696,14 @@
             duelState.active = false;
             duelState.status = 'finished';
             
-            canvas.classList.remove('playing-shooter');
+            document.body.classList.remove('duel-active');
             disableShooterControls();
 
             // Clean up scene
-            if (duelState.localPlayer) scene.remove(duelState.localPlayer.mesh);
-            if (duelState.remotePlayer) scene.remove(duelState.remotePlayer);
+            if (duelState.localPlayer) {
+                duelState.localPlayer.dispose();
+            }
+             if (duelState.remotePlayer) scene.remove(duelState.remotePlayer);
             duelState.projectiles.forEach(p => scene.remove(p));
             duelState.projectiles = [];
             duelState.localPlayer = null;
@@ -2488,12 +2711,15 @@
 
             // Show results
             duelHud.classList.add('hidden');
+            localPlayerDuelHud.classList.add('hidden');
+            timerDisplay.classList.remove('timer-display-duel');
+
             const duelData = gameData.duel;
             const myScore = duelData.players[userId].score;
             const opponentId = currentGameState.playerIds.find(id => id !== userId);
-            const opponentScore = duelData.players[opponentId].score;
+            const opponentScore = duelData.players[opponentId]?.score || 0;
 
-            document.getElementById('final-duel-score').textContent = `${myScore} - ${opponentScore}`;
+            document.getElementById('final-duel-score').textContent = `${myScore} - ${opponentScore} Bajas`;
             if (myScore > opponentScore) {
                 document.getElementById('duel-winner-text').textContent = "¡Has ganado!";
             } else if (opponentScore > myScore) {
@@ -2507,44 +2733,61 @@
         async function closeDuelResults() {
             duelResultsModal.classList.remove('active');
             // Only host resets the duel state in Firestore
-            if (currentGameState.isHost) {
-                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                await updateDoc(gameRef, { 'duel.status': 'inactive' });
+            if (currentGameState.inMultiplayer) {
+                if (currentGameState.isHost) {
+                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                    await updateDoc(gameRef, { 'duel.status': 'inactive' });
+                }
             }
              // Restore normal UI
             document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
-            versusScoreboard.classList.remove('hidden');
+            if (currentGameState.inMultiplayer) {
+                versusScoreboard.classList.remove('hidden');
+            }
+            // Switch back to focus mode, paused
+            await switchMode('focus');
+            pauseTimer();
         }
         
         function updateDuelHud() {
-             if (!duelState.active) return;
-             const opponentId = currentGameState.playerIds.find(id => id !== userId);
+             if (!duelState.localPlayer) return;
              
-             const myInfo = duelState.players[userId];
-             const opponentInfo = duelState.players[opponentId];
+             const myInfo = duelState.localPlayer;
+             const myClassStats = myInfo.classStats;
 
-             if(!myInfo || !opponentInfo) return;
+             if(zombieModeState.active) {
+                // In zombie mode, we only show local player health
+                localPlayerHealthBar.style.width = `${(myInfo.health / myClassStats.maxHealth) * 100}%`;
+                document.getElementById('local-player-name-hud').textContent = `Tú`;
+             } else if (duelState.active) {
+                // Duel mode logic
+                const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                const opponentInfo = duelState.players[opponentId];
+                if(!opponentInfo) return;
 
-             // Update Scores
-             duelScoreDisplay.textContent = `${myInfo.score} - ${opponentInfo.score}`;
-             
-             // Update Health Bars
-             player1HealthBar.style.width = `${(myInfo.health / CLASS_STATS[myInfo.class].maxHealth) * 100}%`;
-             player2HealthBar.style.width = `${(opponentInfo.health / CLASS_STATS[opponentInfo.class].maxHealth) * 100}%`;
-
-             // Update Names
-             document.getElementById('player1-name-hud').textContent = `Tú (${myInfo.class})`;
-             document.getElementById('player2-name-hud').textContent = `Oponente (${opponentInfo.class})`;
+                duelScoreDisplay.textContent = `${duelState.players[userId].score} - ${opponentInfo.score}`;
+                localPlayerHealthBar.style.width = `${(myInfo.health / myClassStats.maxHealth) * 100}%`;
+                remotePlayerHealthBar.style.width = `${(opponentInfo.health / CLASS_STATS[opponentInfo.class].maxHealth) * 100}%`;
+                document.getElementById('local-player-name-hud').textContent = `Tú (${duelState.players[userId].class})`;
+                document.getElementById('remote-player-name-hud').textContent = `Oponente (${opponentInfo.class})`;
+             }
         }
         
+        // ===== FUNCIÓN enableShooterControls CORREGIDA =====
         function enableShooterControls() {
             orbitControls.enabled = false;
+            // CRÍTICO: Resetear rotación vertical antes de lockear
+            camera.rotation.x = 0;
+            camera.rotation.z = 0;
+            camera.rotation.order = 'YXZ'; // Importante para evitar gimbal lock
             pointerLockControls.lock();
         }
 
         function disableShooterControls() {
             orbitControls.enabled = true;
             pointerLockControls.unlock();
+            camera.position.set(0, 20, 50);
+            orbitControls.target.set(0,0,0);
         }
 
         async function spawnProjectile(data, isLocal) {
@@ -2562,21 +2805,49 @@
              scene.add(projectile);
              duelState.projectiles.push(projectile);
 
-             if (isLocal) { // Send to firestore
+             if (isLocal && currentGameState.inMultiplayer) { // Send to firestore
                  const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                  await updateDoc(gameRef, {
-                    projectiles: arrayUnion(data)
+                     projectiles: arrayUnion(data)
                  });
              }
         }
         
-        // --- CREDIT LINE END ---
+        const stuckCheckRaycaster = new THREE.Raycaster();
+        function checkIfStuck() {
+            if (!duelState.localPlayer || !duelState.active) return;
+
+            const playerPosition = pointerLockControls.getObject().position;
+            const directions = [
+                new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+                new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1),
+                new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0)
+            ];
+            let stuckCount = 0;
+            const checkDistance = 1.0; // Check for collisions within 1 unit
+
+            for (const direction of directions) {
+                stuckCheckRaycaster.set(playerPosition, direction);
+                stuckCheckRaycaster.far = checkDistance;
+                const intersects = stuckCheckRaycaster.intersectObjects(grove, true);
+                if (intersects.length > 0) {
+                    stuckCount++;
+                }
+            }
+
+            // If 4 or more rays hit something close, we're likely inside an object
+            if (stuckCount >= 4) {
+                console.warn("Player stuck! Forcing respawn.");
+                duelState.localPlayer.respawn();
+            }
+        }
+
         
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
-            window.addEventListener('mousemove', showUI);
-            document.body.addEventListener('mouseleave', hideUI);
-            window.addEventListener('touchstart', showUI);
+            window.addEventListener('mousemove', () => { if(!duelState.active && !zombieModeState.active) showUI() });
+            document.body.addEventListener('mouseleave', () => { if(!duelState.active && !zombieModeState.active) hideUI() });
+            window.addEventListener('touchstart', () => { if(!duelState.active && !zombieModeState.active) showUI() });
 
 
             playPauseBtn.addEventListener('click', () => {
@@ -2637,7 +2908,7 @@
                 });
             });
             
-            [settingsModal, tasksModal, aiTutorModal, multiplayerModal].forEach(modal => {
+            [settingsModal, tasksModal, aiTutorModal, multiplayerModal, classSelectionModal].forEach(modal => {
                 if (modal) {
                     modal.addEventListener('click', (e) => {
                         if(e.target === modal) modal.classList.remove('active');
@@ -2691,6 +2962,9 @@
             volumeSlider.addEventListener('input', () => updateVolume());
 
             document.addEventListener('click', (e) => {
+                if (duelState.active && !pointerLockControls.isLocked) {
+                    pointerLockControls.lock();
+                }
                 if (soundPanel && !soundPanel.contains(e.target) && !soundMenuBtn.contains(e.target)) {
                     soundPanel.classList.remove('active');
                 }
@@ -2772,10 +3046,24 @@
             exportGameBtn.addEventListener('click', exportGame);
             importGameInput.addEventListener('change', importGame);
 
-            // Duel Minigame Listeners
+            // Duel and Zombie Mode Listeners
             duelModeBtn.addEventListener('click', handleDuelButtonClick);
             classSelectionModal.addEventListener('click', handleClassSelection);
             document.getElementById('close-duel-results-btn').addEventListener('click', closeDuelResults);
+            document.getElementById('zombie-respawn-btn').addEventListener('click', () => {
+                document.getElementById('zombie-death-modal').classList.remove('active');
+                const lastClass = duelState.localPlayer ? duelState.localPlayer.playerClass : 'soldier';
+                endZombieMode(false, false); // No mostrar resultados, no reiniciar timer
+                startZombieMode(lastClass);
+            });
+            document.getElementById('zombie-exit-btn').addEventListener('click', () => {
+                document.getElementById('zombie-death-modal').classList.remove('active');
+                endZombieMode(false, true);
+            });
+            document.getElementById('close-zombie-results-btn').addEventListener('click', () => {
+                document.getElementById('zombie-results-modal').classList.remove('active');
+            });
+
 
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
@@ -2796,8 +3084,11 @@
 
             const delta = clock.getDelta();
 
-            if (duelState.active && duelState.localPlayer) {
-                 duelState.localPlayer.update(delta);
+            if (duelState.localPlayer) {
+                duelState.localPlayer.update(delta);
+            }
+            if ((duelState.active || zombieModeState.active) && duelState.localPlayer) {
+                checkIfStuck(); 
             } else {
                 orbitControls.update();
             }
@@ -2821,38 +3112,78 @@
             for (let i = duelState.projectiles.length - 1; i >= 0; i--) {
                 const p = duelState.projectiles[i];
                 p.position.addScaledVector(p.userData.velocity, delta);
-                
-                // Collision check (only for local projectiles against remote player)
-                if (p.userData.owner === userId && duelState.remotePlayer) {
-                    const distance = p.position.distanceTo(duelState.remotePlayer.position);
-                    if (distance < 1.5) { // Hitbox size
-                         const opponentId = currentGameState.playerIds.find(id => id !== userId);
-                         const myClass = duelState.players[userId].class;
-                         const damage = CLASS_STATS[myClass].weapon.damage;
+                let projectileRemoved = false;
 
-                         // Report hit to firestore
-                         const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                         updateDoc(gameRef, {
-                            [`duel.players.${opponentId}.health`]: increment(-damage),
-                            projectiles: arrayRemove({
-                                id: p.userData.id,
-                                owner: p.userData.owner,
-                                position: p.userData.initialPosition, // Use original data to remove
-                                velocity: p.userData.velocity,
-                                range: p.userData.range
-                            })
-                         });
-                         
-                         scene.remove(p);
-                         duelState.projectiles.splice(i, 1);
-                         continue; // Move to next projectile
+                // --- Collision Logic ---
+                if (p.userData.owner === userId) {
+                    if (zombieModeState.active) {
+                        // Hitting zombies
+                        for (let j = zombieModeState.zombies.length - 1; j >= 0; j--) {
+                            const z = zombieModeState.zombies[j];
+                            if (p.position.distanceTo(z.mesh.position) < 1.2) {
+                                const damage = duelState.localPlayer.classStats.weapon.damage;
+                                z.takeDamage(damage);
+                                scene.remove(p);
+                                duelState.projectiles.splice(i, 1);
+                                projectileRemoved = true;
+                                break; 
+                            }
+                        }
+                    } else if (duelState.remotePlayer) {
+                        // Hitting opponent in duel mode
+                        if (p.position.distanceTo(duelState.remotePlayer.position) < 1.5) {
+                            if (currentGameState.inMultiplayer) {
+                                const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                                const myClass = duelState.players[userId].class;
+                                const damage = CLASS_STATS[myClass].weapon.damage;
+                                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                                updateDoc(gameRef, {
+                                    [`duel.players.${opponentId}.health`]: increment(-damage),
+                                    projectiles: arrayRemove({ id: p.userData.id, owner: p.userData.owner, position: p.userData.initialPosition, velocity: p.userData.velocity, range: p.userData.range })
+                                });
+                            }
+                            scene.remove(p);
+                            duelState.projectiles.splice(i, 1);
+                            projectileRemoved = true;
+                        }
                     }
+                }
+                if (projectileRemoved) continue;
+
+                // Hitting Trees
+                let hitTree = false;
+                for (const tree of grove) {
+                    const trunk = tree.children[0];
+                    if (trunk) {
+                        const trunkBox = new THREE.Box3().setFromObject(trunk);
+                        if (trunkBox.containsPoint(p.position)) {
+                            hitTree = true;
+                            break;
+                        }
+                    }
+                }
+                if (hitTree) {
+                    scene.remove(p);
+                    duelState.projectiles.splice(i, 1);
+                    continue;
                 }
 
                 // Despawn projectile after time/range
-                if (Date.now() - p.userData.spawnTime > p.userData.range * 10) {
-                     scene.remove(p);
-                     duelState.projectiles.splice(i, 1);
+                if (Date.now() - p.userData.spawnTime > p.userData.range * 100) {
+                    scene.remove(p);
+                    duelState.projectiles.splice(i, 1);
+                }
+            }
+            
+            // ===== ZOMBIE MODE LOGIC =====
+            if (zombieModeState.active) {
+                zombieModeState.waveTimer -= delta;
+                const playerPosition = duelState.localPlayer ? pointerLockControls.getObject().position : new THREE.Vector3();
+                for (let i = zombieModeState.zombies.length - 1; i >= 0; i--) {
+                    zombieModeState.zombies[i].update(delta, playerPosition);
+                }
+                if (zombieModeState.zombies.length === 0 || zombieModeState.waveTimer <= 0) {
+                    startNextWave();
                 }
             }
 
@@ -2907,6 +3238,7 @@
                 const savedLang = localStorage.getItem('language') || 'es';
                 applyLanguage(savedLang);
                 switchMode('focus');
+                changeSpeed(1); // Set initial speed to 1x and update UI
 
             } catch (error) {
                 console.error("Initialization Error:", error);
@@ -2916,142 +3248,779 @@
         
         main();
 
-        // --- Player Controller Class for Shooter Minigame ---
+        // ===== PLAYER CONTROLLER COMPLETAMENTE REESCRITO =====
         class PlayerController {
             constructor(isLocal, playerClass) {
                 this.isLocal = isLocal;
+                this.playerClass = playerClass;
                 this.classStats = CLASS_STATS[playerClass];
                 this.health = this.classStats.maxHealth;
+                this.velocity = new THREE.Vector3();
+                this.direction = new THREE.Vector3();
+                this.onGround = false;
+                this.isRespawning = false;
                 this.lastShotTime = 0;
-
-                const playerGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
-                const playerMat = new THREE.MeshStandardMaterial({ color: isLocal ? 0x4a90e2 : 0xe24a4a });
-                this.mesh = new THREE.Mesh(playerGeo, playerMat);
-                this.mesh.castShadow = true;
-                this.mesh.position.set(Math.random() * 20 - 10, 20, Math.random() * 20 - 10);
-                scene.add(this.mesh);
-
-                if(this.isLocal) {
-                    this.camera = pointerLockControls.getObject();
-                    this.velocity = new THREE.Vector3();
-                    this.direction = new THREE.Vector3();
-                    this.onGround = false;
-                    this.keys = {};
-                    this.mouse = { x: 0, y: 0, down: false };
-
-                    document.addEventListener('keydown', (e) => this.keys[e.code] = true);
-                    document.addEventListener('keyup', (e) => this.keys[e.code] = false);
-                    document.addEventListener('mousedown', () => this.mouse.down = true);
-                    document.addEventListener('mouseup', () => this.mouse.down = false);
+                this.lastSyncTime = 0;
+                this.bobTime = 0;
+                this.recoil = new THREE.Vector3();
+                this.recoilTarget = new THREE.Vector3();
+                // Nuevos: Detección de estado inválido
+                this.fallTimer = 0;
+                this.stuckTimer = 0;
+                this.lastValidPosition = new THREE.Vector3(0, 20, 0);
+                this.timeSinceLastHit = 0; // Para regeneración de vida
+                this.lastHitTime = 0;
+                this.keys = {
+                    KeyW: false,
+                    KeyA: false,
+                    KeyS: false,
+                    KeyD: false,
+                    Space: false,
+                    ShiftLeft: false
+                };
+                this.mouse = {
+                    down: false
+                };
+                if (this.isLocal) {
+                    this.camera = camera;
+                    this.weapon = this.createWeaponMesh(playerClass);
+                    this.camera.add(this.weapon);
+                    this.mesh = new THREE.Group();
+                    document.addEventListener('keydown', (e) => {
+                        if (this.keys.hasOwnProperty(e.code)) {
+                            this.keys[e.code] = true;
+                        }
+                    });
+                    document.addEventListener('keyup', (e) => {
+                        if (this.keys.hasOwnProperty(e.code)) {
+                            this.keys[e.code] = false;
+                        }
+                    });
+                    document.addEventListener('mousedown', () => {
+                        if (pointerLockControls.isLocked) {
+                            this.mouse.down = true;
+                        }
+                    });
+                    document.addEventListener('mouseup', () => {
+                        this.mouse.down = false;
+                    });
+                } else {
+                    const bodyGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+                    const bodyMat = new THREE.MeshStandardMaterial({
+                        color: 0xff0000
+                    });
+                    this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
+                    scene.add(this.mesh);
+                    this.mesh.position.set(Math.random() * 40 - 20, 20, Math.random() * 40 - 20);
                 }
             }
+            takeDamage(amount) {
+                if (this.isRespawning) return;
+                this.health -= amount;
+                if (this.health < 0) this.health = 0;
+                this.timeSinceLastHit = 0; // Reset regen timer
 
+                const now = performance.now();
+                if (now - this.lastHitTime > 200) { // Cooldown for hit sound
+                    this.lastHitTime = now;
+                    if (isAudioReady && soundSources.player_hit) {
+                        soundSources.player_hit.triggerAttackRelease("G1", "8n");
+                    }
+                }
+
+                updateDuelHud();
+            }
+            playShotSound() {
+                if (!isAudioReady) return;
+                switch (this.playerClass) {
+                    case 'scout':
+                        soundSources.shot_pistol.triggerAttack();
+                        break;
+                    case 'soldier':
+                        soundSources.shot_rifle.triggerAttack();
+                        break;
+                    case 'tank':
+                        soundSources.shot_shotgun.triggerAttack();
+                        break;
+                }
+            }
+            createWeaponMesh(playerClass) {
+                const weaponGroup = new THREE.Group();
+                const darkGray = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    roughness: 0.4,
+                    metalness: 0.5
+                });
+                const lightGray = new THREE.MeshStandardMaterial({
+                    color: 0x888888,
+                    roughness: 0.4,
+                    metalness: 0.7
+                });
+                switch (playerClass) {
+                    case 'scout':
+                        const pistolBody = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.08, 0.1, 0.2),
+                            darkGray
+                        );
+                        const pistolGrip = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.06, 0.2, 0.06),
+                            darkGray
+                        );
+                        pistolGrip.position.set(0, -0.1, -0.05);
+                        pistolGrip.rotation.x = 0.2;
+                        const pistolBarrel = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8),
+                            lightGray
+                        );
+                        pistolBarrel.position.set(0, 0.03, 0.15);
+                        pistolBarrel.rotation.x = Math.PI / 2;
+                        weaponGroup.add(pistolBody, pistolGrip, pistolBarrel);
+                        break;
+                    case 'soldier':
+                        const rifleBody = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.1, 0.12, 0.5),
+                            darkGray
+                        );
+                        const rifleBarrel = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8),
+                            lightGray
+                        );
+                        rifleBarrel.position.set(0, -0.02, 0.45);
+                        rifleBarrel.rotation.x = Math.PI / 2;
+                        const rifleScope = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.03, 0.03, 0.15, 12),
+                            darkGray
+                        );
+                        rifleScope.position.set(0, 0.1, 0);
+                        rifleScope.rotation.z = Math.PI / 2;
+                        weaponGroup.add(rifleBody, rifleBarrel, rifleScope);
+                        break;
+                    case 'tank':
+                        const shotgunBody = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.12, 0.14, 0.6),
+                            darkGray
+                        );
+                        const shotgunBarrel = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8),
+                            lightGray
+                        );
+                        shotgunBarrel.position.set(0, -0.02, 0.4);
+                        shotgunBarrel.rotation.x = Math.PI / 2;
+                        weaponGroup.add(shotgunBody, shotgunBarrel);
+                        break;
+                }
+                weaponGroup.position.set(0.25, -0.4, -0.6);
+                return weaponGroup;
+            }
+            dispose() {
+                if (this.isLocal && this.weapon) {
+                    this.camera.remove(this.weapon);
+                }
+                scene.remove(this.mesh);
+            }
+            // ===== NUEVO SISTEMA DE SPAWN ROBUSTO =====
             async respawn() {
+                console.log("🔄 Iniciando respawn...");
                 this.health = this.classStats.maxHealth;
-                const spawnX = Math.random() * 40 - 20;
-                const spawnZ = Math.random() * 40 - 20;
-                const spawnY = getHeightAt(spawnX, -spawnZ) + 10;
-                this.mesh.position.set(spawnX, spawnY, spawnZ);
-                this.velocity.set(0,0,0);
-                
+                this.isRespawning = true;
+                this.onGround = false;
+                this.velocity.set(0, 0, 0);
+                const MAX_ATTEMPTS = 50;
+                const MIN_TREE_DISTANCE = 3.5; // Distancia segura de árboles
+                const SPAWN_RADIUS = 70;
+                const MIN_HEIGHT = 2; // Altura mínima válida del terreno
+                const MAX_HEIGHT = 25; // Altura máxima válida
+                const CAMERA_HEIGHT = 1.8;
+                let bestSpawn = null;
+                let bestScore = -Infinity;
+                // Buscar la MEJOR posición, no solo una válida
+                for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * SPAWN_RADIUS;
+                    const testX = Math.cos(angle) * radius;
+                    const testZ = Math.sin(angle) * radius;
+                    // Validar altura del terreno
+                    const testY = getHeightAt(testX, -testZ);
+                    if (!isFinite(testY) || testY < MIN_HEIGHT || testY > MAX_HEIGHT) {
+                        continue; // Terreno inválido
+                    }
+                    // Calcular distancia mínima a cualquier árbol
+                    let minTreeDist = Infinity;
+                    let tooClose = false;
+                    for (const tree of grove) {
+                        const dx = testX - tree.position.x;
+                        const dz = testZ - tree.position.z;
+                        const dist = Math.sqrt(dx * dx + dz * dz);
+                        if (dist < MIN_TREE_DISTANCE) {
+                            tooClose = true;
+                            break;
+                        }
+                        minTreeDist = Math.min(minTreeDist, dist);
+                    }
+                    if (tooClose) continue;
+                    // Puntuación: prefiere zonas planas y lejos de árboles
+                    const flatness = 10 - Math.abs(testY - 10); // Prefiere altura media
+                    const treeScore = Math.min(minTreeDist, 10); // Bonus por lejanía
+                    const score = flatness + treeScore;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestSpawn = {
+                            x: testX,
+                            y: testY,
+                            z: testZ
+                        };
+                    }
+                }
+                // Fallback absoluto si no se encuentra posición
+                if (!bestSpawn) {
+                    console.warn("⚠️ No se encontró spawn seguro, usando posición central elevada");
+                    bestSpawn = {
+                        x: 0,
+                        y: 15,
+                        z: 0
+                    };
+                }
+                const finalPos = new THREE.Vector3(
+                    bestSpawn.x,
+                    bestSpawn.y + CAMERA_HEIGHT,
+                    bestSpawn.z
+                );
+                console.log(`✅ Spawn encontrado en (${finalPos.x.toFixed(2)}, ${finalPos.y.toFixed(2)}, ${finalPos.z.toFixed(2)})`);
+                // Aplicar posición
                 if (this.isLocal) {
+                    const cameraObject = pointerLockControls.getObject();
+                    cameraObject.position.copy(finalPos);
+                    // Resetear rotación vertical para evitar pantalla negra
+                    camera.rotation.x = 0;
+                    camera.rotation.z = 0;
+                } else {
+                    this.mesh.position.copy(finalPos);
+                }
+                // Guardar como última posición válida
+                this.lastValidPosition.copy(finalPos);
+                this.fallTimer = 0;
+                this.stuckTimer = 0;
+                this.isRespawning = false;
+                // Sincronizar con Firebase si es necesario
+                if (this.isLocal && currentGameState.inMultiplayer) {
                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                     await updateDoc(gameRef, {
+                        [`duel.players.${userId}.position`]: {
+                            x: finalPos.x,
+                            y: finalPos.y,
+                            z: finalPos.z
+                        },
                         [`duel.players.${userId}.health`]: this.health
                     });
                 }
             }
-
+            // ===== SISTEMA DE MOVIMIENTO MEJORADO CON VALIDACIONES =====
             update(delta) {
                 if (!this.isLocal) return;
-
-                // Handle player death/fall
-                if (this.mesh.position.y < -10 || this.health <= 0) {
-                    const opponentId = currentGameState.playerIds.find(id => id !== userId);
-                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                    updateDoc(gameRef, {
-                        [`duel.players.${opponentId}.score`]: increment(1)
-                    });
-                    this.respawn();
+                const cameraObject = pointerLockControls.getObject();
+                
+                // 1. Detección de caída infinita y vida cero
+                if ((cameraObject.position.y < -5 || this.health <= 0) && !this.isRespawning) {
+                    if (zombieModeState.active) {
+                        document.getElementById('death-modal-round').textContent = zombieModeState.round;
+                        document.getElementById('death-modal-kills').textContent = zombieModeState.kills;
+                        document.getElementById('zombie-death-modal').classList.add('active');
+                        disableShooterControls();
+                        this.isRespawning = true; 
+                        pauseTimer(); // CAMBIO: Pausar el temporizador al morir
+                    } else if (currentGameState.inMultiplayer) {
+                        const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                        const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                        updateDoc(gameRef, { [`duel.players.${opponentId}.score`]: increment(1) });
+                        this.respawn();
+                    }
                     return;
                 }
-                
-                // Movement
-                const speed = this.classStats.speed;
-                this.direction.z = Number(this.keys['KeyW']) - Number(this.keys['KeyS']);
-                this.direction.x = Number(this.keys['KeyD']) - Number(this.keys['KeyA']);
-                this.direction.normalize();
 
-                const effectiveSpeed = this.keys['ShiftLeft'] ? speed * 1.5 : speed;
-
-                if (this.keys['KeyW'] || this.keys['KeyS']) this.velocity.z -= this.direction.z * effectiveSpeed * delta;
-                if (this.keys['KeyA'] || this.keys['KeyD']) this.velocity.x -= this.direction.x * effectiveSpeed * delta;
-                
-                // Gravity
-                this.velocity.y -= 30 * delta;
-
-                // Apply movement based on camera direction
-                this.mesh.translateX(this.velocity.x * delta);
-                this.mesh.translateZ(this.velocity.z * delta);
-                this.mesh.position.y += this.velocity.y * delta;
-                
-                // Ground check
-                const groundY = getHeightAt(this.mesh.position.x, -this.mesh.position.z) + 1.5;
-                if (this.mesh.position.y < groundY) {
-                    this.velocity.y = 0;
-                    this.mesh.position.y = groundY;
-                    this.onGround = true;
+                // 2. Detección de caída prolongada (más de 3 segundos cayendo)
+                if (this.velocity.y < -5 && !this.onGround) {
+                    this.fallTimer += delta;
+                    if (this.fallTimer > 3.0) {
+                        console.warn("❌ Caída prolongada detectada, respawneando...");
+                        this.respawn();
+                        return;
+                    }
                 } else {
-                    this.onGround = false;
+                    this.fallTimer = 0;
+                }
+                // 3. Detección de atascamiento (sin movimiento durante 2 segundos)
+                if (pointerLockControls.isLocked) {
+                    const distMoved = cameraObject.position.distanceTo(this.lastValidPosition);
+                    if (distMoved < 0.1 && (this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD)) {
+                        this.stuckTimer += delta;
+                        if (this.stuckTimer > 2.0) {
+                            console.warn("❌ Jugador atascado, respawneando...");
+                            this.respawn();
+                            return;
+                        }
+                    } else if (distMoved > 0.5) {
+                        this.stuckTimer = 0;
+                        this.lastValidPosition.copy(cameraObject.position);
+                    }
+                }
+                 // ===== REGENERACIÓN DE VIDA =====
+                this.timeSinceLastHit += delta;
+                if (this.timeSinceLastHit > 5.0 && this.health < this.classStats.maxHealth) {
+                    const regenRate = 20; // Health per second
+                    this.health += regenRate * delta;
+                    if (this.health > this.classStats.maxHealth) {
+                        this.health = this.classStats.maxHealth;
+                    }
+                    updateDuelHud(); // Update the UI
+                }
+                // ===== MOVIMIENTO Y COLISIONES =====
+                const speed = this.classStats.speed;
+                const isMoving = this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD;
+                // Gravedad
+                const gravity = this.isRespawning ? 8.0 : 30.0;
+                this.velocity.y -= gravity * delta;
+                // Dirección de movimiento
+                this.direction.z = Number(this.keys.KeyW) - Number(this.keys.KeyS);
+                this.direction.x = Number(this.keys.KeyA) - Number(this.keys.KeyD);
+                this.direction.normalize();
+                const effectiveSpeed = this.keys.ShiftLeft ? speed * 1.5 : speed;
+                // Calcular vectores de movimiento
+                const forwardVector = new THREE.Vector3();
+                cameraObject.getWorldDirection(forwardVector);
+                forwardVector.y = 0;
+                forwardVector.normalize();
+                const rightVector = new THREE.Vector3().crossVectors(cameraObject.up, forwardVector);
+                const moveX = (this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * effectiveSpeed * delta;
+                const moveZ = (this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * effectiveSpeed * delta;
+                // Calcular próxima posición
+                const nextPos = cameraObject.position.clone();
+                nextPos.x += moveX;
+                nextPos.z += moveZ;
+                // ===== COLISIÓN MEJORADA CON ÁRBOLES =====
+                let collision = false;
+                const PLAYER_RADIUS = 0.6; // Radio del jugador
+                const TREE_RADIUS = 0.8; // Radio del tronco del árbol
+                for (const tree of grove) {
+                    const dx = nextPos.x - tree.position.x;
+                    const dz = nextPos.z - tree.position.z;
+                    const distance = Math.sqrt(dx * dx + dz * dz);
+                    if (distance < PLAYER_RADIUS + TREE_RADIUS) {
+                        collision = true;
+                        // Empujar al jugador fuera del árbol (slide)
+                        const pushAngle = Math.atan2(dz, dx);
+                        const pushDist = (PLAYER_RADIUS + TREE_RADIUS) - distance + 0.1;
+                        nextPos.x += Math.cos(pushAngle) * pushDist;
+                        nextPos.z += Math.sin(pushAngle) * pushDist;
+                        break;
+                    }
+                }
+                // Aplicar movimiento horizontal solo si no hay colisión frontal
+                if (!collision) {
+                    cameraObject.position.x = nextPos.x;
+                    cameraObject.position.z = nextPos.z;
+                }
+                
+                // ===== MOVIMIENTO VERTICAL Y TERRENO REFACTORIZADO =====
+                cameraObject.position.y += this.velocity.y * delta;
+                let onSolidSurface = false;
+                const playerFeetY = cameraObject.position.y - 1.8;
+
+                // 1. Comprobar colisión con copas de los árboles primero
+                if (this.velocity.y <= 0) { // Solo comprobar al caer
+                    for (const tree of grove) {
+                        const dx = cameraObject.position.x - tree.position.x;
+                        const dz = cameraObject.position.z - tree.position.z;
+                        const horizontalDistSq = dx * dx + dz * dz;
+                        const canopyCheckRadiusSq = 3 * 3; // Radio de comprobación generoso
+
+                        if (horizontalDistSq < canopyCheckRadiusSq) {
+                            // Saltar el tronco (hijo 0) y comprobar las otras partes
+                            for (let i = 1; i < tree.children.length; i++) {
+                                const canopyPart = tree.children[i];
+                                const canopyBox = new THREE.Box3().setFromObject(canopyPart);
+                                if (cameraObject.position.x > canopyBox.min.x && cameraObject.position.x < canopyBox.max.x &&
+                                    cameraObject.position.z > canopyBox.min.z && cameraObject.position.z < canopyBox.max.z) {
+                                    
+                                    const canopyTopY = canopyBox.max.y;
+                                    // Comprobar si el jugador estaba arriba y ahora está en o debajo de la copa
+                                    if (playerFeetY <= canopyTopY && (playerFeetY - this.velocity.y * delta) > canopyTopY) {
+                                        this.velocity.y = 0;
+                                        cameraObject.position.y = canopyTopY + 1.8;
+                                        onSolidSurface = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (onSolidSurface) break;
+                    }
                 }
 
-                // Jump
-                if (this.keys['Space'] && this.onGround) {
+                // 2. Si no está en una copa, comprobar colisión con el suelo
+                if (!onSolidSurface) {
+                    const groundY = getHeightAt(cameraObject.position.x, -cameraObject.position.z) + 1.8;
+                    if (!isFinite(groundY)) {
+                        console.warn("⚠️ Altura de terreno inválida, respawneando...");
+                        this.respawn();
+                        return;
+                    }
+                    if (cameraObject.position.y <= groundY) {
+                        this.velocity.y = 0;
+                        cameraObject.position.y = groundY;
+                        onSolidSurface = true;
+                    }
+                }
+
+                // Establecer estado onGround
+                this.onGround = onSolidSurface;
+                if (this.onGround && this.isRespawning) {
+                    this.isRespawning = false;
+                }
+
+                // Salto
+                if (this.keys.Space && this.onGround) {
                     this.velocity.y = this.classStats.jumpHeight;
                 }
                 
-                // Damping
-                this.velocity.x *= 0.9;
-                this.velocity.z *= 0.9;
-                
-                // Shooting
-                if(this.mouse.down) {
+                // Sincronizar mesh del jugador
+                this.mesh.position.set(
+                    cameraObject.position.x,
+                    cameraObject.position.y - 0.8,
+                    cameraObject.position.z
+                );
+                // ===== DISPARO =====
+                if (this.mouse.down && pointerLockControls.isLocked) {
                     const now = Date.now();
-                    if(now - this.lastShotTime > this.classStats.weapon.fireRate) {
+                    if (now - this.lastShotTime >= this.classStats.weapon.fireRate) {
                         this.lastShotTime = now;
+                        this.playShotSound();
+                        this.recoilTarget.z = 0.1;
                         const direction = new THREE.Vector3();
                         this.camera.getWorldDirection(direction);
-                        
-                        const spawnPos = this.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0));
-                        spawnPos.add(direction.clone().multiplyScalar(1));
-
+                        const spawnPos = this.camera.position.clone();
                         const projectileData = {
                             id: THREE.MathUtils.generateUUID(),
                             owner: userId,
                             position: spawnPos,
                             velocity: direction.multiplyScalar(this.classStats.weapon.projectileSpeed),
                             range: this.classStats.weapon.range,
-                            initialPosition: spawnPos // Store for removal
+                            initialPosition: spawnPos
                         };
                         spawnProjectile(projectileData, true);
                     }
                 }
-
-                // Update camera position to follow player
-                this.camera.position.copy(this.mesh.position);
-
-                // Sync with Firestore (throttled)
-                if (Date.now() - (this.lastSyncTime || 0) > 100) { // Sync ~10 times/sec
+                // ===== ANIMACIÓN DE ARMA =====
+                this.bobTime += delta * (speed * (isMoving && this.onGround ? 0.2 : 0));
+                this.weapon.position.y = -0.4 + Math.sin(this.bobTime) * 0.02;
+                this.weapon.position.x = 0.25 + Math.cos(this.bobTime * 0.5) * 0.01;
+                this.recoil.lerp(this.recoilTarget, delta * 20);
+                this.recoilTarget.lerp(new THREE.Vector3(), delta * 10);
+                this.weapon.position.z = -0.6 - this.recoil.z;
+                // ===== SINCRONIZACIÓN FIREBASE =====
+                if (Date.now() - this.lastSyncTime >= 100) {
                     this.lastSyncTime = Date.now();
-                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                    updateDoc(gameRef, {
-                        [`duel.players.${userId}.position`]: {x: this.mesh.position.x, y: this.mesh.position.y, z: this.mesh.position.z},
-                        [`duel.players.${userId}.rotationY`]: this.mesh.rotation.y
-                    });
+                    if (currentGameState.inMultiplayer) {
+                        const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                        updateDoc(gameRef, {
+                            [`duel.players.${userId}.position`]: {
+                                x: this.mesh.position.x,
+                                y: this.mesh.position.y,
+                                z: this.mesh.position.z
+                            },
+                            [`duel.players.${userId}.rotationY`]: this.camera.rotation.y
+                        });
+                    }
                 }
             }
         }
+        
+        // --- ZOMBIE CONTROLLER CLASS ---
+        class ZombieController {
+            constructor() {
+                const faceTexture = this.createZombieFaceTexture();
+
+                const bodyGeo = new THREE.CapsuleGeometry(0.6, 1.2, 4, 8);
+                const bodyMat = new THREE.MeshStandardMaterial({
+                    roughness: 1,
+                    map: faceTexture
+                });
+                this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
+                this.mesh.castShadow = true;
+                
+                const baseHealth = 60; // Start with 60 HP
+                this.health = baseHealth * Math.pow(1.2, zombieModeState.round - 1); // 20% increase per round
+                
+                this.speed = 2.4 + (zombieModeState.round * 0.35); // Speed increases more per round
+                this.damage = 50; 
+                this.attackCooldown = 0;
+                this.velocity = new THREE.Vector3();
+                this.onGround = false;
+                this.lastStepTime = 0;
+                this.lastGrowlTime = Date.now();
+                this.nextGrowlDelay = 5000 + Math.random() * 8000;
+
+                this.spawn();
+                scene.add(this.mesh);
+            }
+
+            createZombieFaceTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const context = canvas.getContext('2d');
+
+                // Background: Green/Purple Radial Gradient for a diffused look
+                const gradient = context.createRadialGradient(64, 64, 10, 64, 64, 80);
+                gradient.addColorStop(0, '#43a047'); // Green center
+                gradient.addColorStop(1, '#5e35b1'); // Purple outer
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, 128, 128);
+
+                // Add some noise/texture to the skin
+                for (let i = 0; i < 1000; i++) {
+                    context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2})`;
+                    context.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+                }
+                
+                // Sunken eye sockets
+                context.fillStyle = 'rgba(0,0,0,0.5)';
+                context.beginPath();
+                context.arc(45, 50, 12, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.arc(83, 50, 12, 0, Math.PI * 2);
+                context.fill();
+
+
+                // Eyes (glowing red)
+                context.fillStyle = '#ff1744'; // Bright red
+                context.beginPath();
+                context.arc(45, 50, 8, 0, Math.PI * 2); // Left eye
+                context.fill();
+                context.beginPath();
+                context.arc(83, 50, 8, 0, Math.PI * 2); // Right eye
+                context.fill();
+                
+                // Add a smaller, brighter pupil
+                context.fillStyle = '#ff8a80'; // Lighter red
+                context.beginPath();
+                context.arc(45, 50, 3, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.arc(83, 50, 3, 0, Math.PI * 2);
+                context.fill();
+
+                // Mouth (gaping)
+                context.fillStyle = 'black';
+                context.beginPath();
+                context.ellipse(64, 90, 25, 10, 0, 0, Math.PI * 2);
+                context.fill();
+                
+                // Jagged Teeth
+                context.fillStyle = '#bbbbbb';
+                for(let i=0; i < 5; i++) {
+                    const x = 45 + i * 8;
+                    context.beginPath();
+                    context.moveTo(x, 82);
+                    context.lineTo(x + 4, 82);
+                    context.lineTo(x + 2, 86);
+                    context.closePath();
+                    context.fill();
+                }
+
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            spawn() {
+                const SPAWN_RADIUS = 80;
+                const angle = Math.random() * Math.PI * 2;
+                const radius = SPAWN_RADIUS * (0.8 + Math.random() * 0.2); // Spawn further away
+                const spawnX = Math.cos(angle) * radius;
+                const spawnZ = Math.sin(angle) * radius;
+                const spawnY = getHeightAt(spawnX, -spawnZ) + 10;
+                this.mesh.position.set(spawnX, spawnY, spawnZ);
+            }
+
+            update(delta, playerPosition) {
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown -= delta;
+                }
+
+                // --- Navigation ---
+                const direction = playerPosition.clone().sub(this.mesh.position).normalize();
+                direction.y = 0; // Zombies don't fly
+
+                this.velocity.x = direction.x * this.speed;
+                this.velocity.z = direction.z * this.speed;
+
+                // --- Gravity and Ground Collision ---
+                this.velocity.y -= 30 * delta; // Gravity
+                this.mesh.position.x += this.velocity.x * delta;
+                this.mesh.position.z += this.velocity.z * delta;
+                this.mesh.position.y += this.velocity.y * delta;
+                
+                const groundY = getHeightAt(this.mesh.position.x, -this.mesh.position.z) + 1.1; // Capsule half-height
+
+                if (this.mesh.position.y < groundY) {
+                    this.mesh.position.y = groundY;
+                    this.velocity.y = 0;
+                    this.onGround = true;
+                } else {
+                    this.onGround = false;
+                }
+                
+                // Make zombie look at player
+                this.mesh.lookAt(playerPosition.x, this.mesh.position.y, playerPosition.z);
+
+                // --- Sound Effects ---
+                const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
+                if (this.onGround && this.velocity.lengthSq() > 0.1) {
+                    if (Date.now() - this.lastStepTime > 500) { // Step every 500ms
+                        this.lastStepTime = Date.now();
+                        const volume = -20 - Math.min(distanceToPlayer * 1.5, 20);
+                        
+                        // Use the synth pool for steps
+                        const stepSynth = soundSources.zombie_steps[soundSources.zombie_step_index];
+                        stepSynth.volume.value = volume;
+                        stepSynth.triggerAttackRelease("C1", "16n", Tone.now());
+                        soundSources.zombie_step_index = (soundSources.zombie_step_index + 1) % soundSources.zombie_steps.length;
+                    }
+                }
+                if (Date.now() - this.lastGrowlTime > this.nextGrowlDelay) {
+                    this.lastGrowlTime = Date.now();
+                    this.nextGrowlDelay = 8000 + Math.random() * 8000;
+                    const volume = -15 - Math.min(distanceToPlayer, 20);
+                    
+                    // Use the synth pool for growls
+                    const growlSynth = soundSources.zombie_growls[soundSources.zombie_growl_index];
+                    growlSynth.volume.value = volume;
+                    growlSynth.triggerAttackRelease("G0", "1s", Tone.now());
+                    soundSources.zombie_growl_index = (soundSources.zombie_growl_index + 1) % soundSources.zombie_growls.length;
+                }
+
+
+                // --- Player Attack Collision ---
+                if (distanceToPlayer < 2.0 && this.attackCooldown <= 0) {
+                    if (duelState.localPlayer) {
+                        duelState.localPlayer.takeDamage(this.damage);
+                        this.attackCooldown = 1.5; // 1.5 second between attacks
+                    }
+                }
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    this.die();
+                }
+            }
+
+            die() {
+                scene.remove(this.mesh);
+                // Find and remove this zombie from the main array
+                const index = zombieModeState.zombies.indexOf(this);
+                if (index > -1) {
+                    zombieModeState.zombies.splice(index, 1);
+                }
+                if(isAudioReady && soundSources.zombie_deaths) {
+                    const deathSynth = soundSources.zombie_deaths[soundSources.zombie_death_index];
+                    deathSynth.triggerAttackRelease("F#1", "4n", Tone.now());
+                    soundSources.zombie_death_index = (soundSources.zombie_death_index + 1) % soundSources.zombie_deaths.length;
+                }
+                zombieModeState.kills++;
+                document.getElementById('zombie-kills-display').textContent = zombieModeState.kills;
+            }
+        }
+
+        function startZombieMode(playerClass = 'soldier') {
+            console.log(`Starting Zombie Mode with class: ${playerClass}`);
+            changeSpeed(1);
+            preZombieState.mode = state.mode;
+            preZombieState.currentTime = state.currentTime;
+            zombieModeStartTime = performance.now();
+
+            zombieModeState.active = true;
+            zombieModeState.round = 0;
+            zombieModeState.kills = 0;
+            zombieModeState.zombies = [];
+
+            // Setup UI
+            document.body.classList.add('duel-active');
+            document.querySelectorAll('.controls').forEach(c => c.classList.add('hidden'));
+            timerDisplay.classList.add('timer-display-duel');
+            document.getElementById('zombie-hud').classList.remove('hidden');
+            localPlayerDuelHud.classList.remove('hidden');
+            duelModeBtn.classList.add('hidden');
+            classSelectionModal.classList.remove('active');
+
+            // Setup Player
+            duelState.localPlayer = new PlayerController(true, playerClass);
+            duelState.localPlayer.respawn();
+            enableShooterControls();
+            
+            // Start the game
+            startNextWave();
+            if (!state.isRunning) {
+                startTimer();
+            }
+        }
+
+        function endZombieMode(showResults = true, resetTimerState = true) {
+            if (!zombieModeState.active) return;
+            console.log("Ending Zombie Mode.");
+            
+            if (showResults) {
+                document.getElementById('results-modal-round').textContent = zombieModeState.round;
+                document.getElementById('results-modal-kills').textContent = zombieModeState.kills;
+                document.getElementById('zombie-results-modal').classList.add('active');
+            }
+
+            zombieModeState.active = false;
+            zombieModeState.zombies.forEach(z => scene.remove(z.mesh));
+            zombieModeState.zombies = [];
+
+            document.body.classList.remove('duel-active');
+            disableShooterControls();
+            
+            if (duelState.localPlayer) {
+                duelState.localPlayer.dispose();
+                duelState.localPlayer = null;
+            }
+
+            // Restore UI
+            document.getElementById('zombie-hud').classList.add('hidden');
+            localPlayerDuelHud.classList.add('hidden');
+            timerDisplay.classList.remove('timer-display-duel');
+            document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
+            
+            if(resetTimerState) {
+                // Restore the timer to its pre-zombie state, but paused.
+                pauseTimer();
+                const elapsedTime = (performance.now() - zombieModeStartTime) / 1000;
+                state.currentTime = Math.round(Math.max(0, preZombieState.currentTime - elapsedTime));
+                updateTimerDisplay();
+            }
+            updateSinglePlayerDuelButtonVisibility();
+        }
+
+        function startNextWave() {
+            zombieModeState.round++;
+            zombieModeState.waveTimer = zombieModeState.waveInterval;
+            
+            zombieModeState.zombiesToSpawn = Math.floor(3 + zombieModeState.round * 1.5);
+
+            for (let i = 0; i < zombieModeState.zombiesToSpawn; i++) {
+                const zombie = new ZombieController();
+                zombieModeState.zombies.push(zombie);
+            }
+
+            document.getElementById('zombie-round-display').textContent = zombieModeState.round;
+            document.getElementById('zombie-kills-display').textContent = zombieModeState.kills;
+            console.log(`Starting Round ${zombieModeState.round} with ${zombieModeState.zombiesToSpawn} zombies.`);
+        }
+
 
     </script>
 </body>
 </html>
+
