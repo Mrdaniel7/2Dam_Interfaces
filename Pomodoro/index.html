@@ -2508,8 +2508,20 @@
                 } else {
                     duelModeBtn.classList.add('hidden');
                 }
-            } else if (!currentGameState.inMultiplayer) { 
-                duelModeBtn.classList.add('hidden');
+            } else if (currentGameState.inMultiplayer && currentGameState.mode === 'versus') {
+                const playersData = duelState.players;
+                const p1Status = playersData[currentGameState.playerIds[0]]?.status;
+                const p2Status = playersData[currentGameState.playerIds[1]]?.status;
+
+                if ((p1Status === 'shortBreak' || p1Status === 'longBreak') && 
+                    (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
+                    duelModeBtn.textContent = '⚔️ ¡Duelo! ⚔️';
+                    duelModeBtn.classList.remove('hidden');
+                } else {
+                    duelModeBtn.classList.add('hidden');
+                }
+            } else {
+                 duelModeBtn.classList.add('hidden');
             }
         }
 
@@ -2580,7 +2592,7 @@
                     duelState.active = false;
                     // Restore basic UI
                     document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
-                    duelModeBtn.classList.remove('hidden');
+                    updateSinglePlayerDuelButtonVisibility();
                 }
             }
             
@@ -2824,9 +2836,16 @@
             
             const lockPointer = () => {
                 pointerLockControls.lock();
-                canvas.removeEventListener('click', lockPointer);
             };
             canvas.addEventListener('click', lockPointer);
+            
+            const onUnlock = () => {
+                 canvas.addEventListener('click', lockPointer);
+            };
+            pointerLockControls.addEventListener('unlock', onUnlock);
+
+            // Initial lock
+            pointerLockControls.lock();
         }
 
         function disableShooterControls() {
