@@ -1111,9 +1111,8 @@
         let grove = [];
         const shrubsGroup = new THREE.Group();
         const flowersGroup = new THREE.Group();
+        let noise;
         
-        const simplex = new SimplexNoise();
-
         // --- FIREBASE & APP STATE ---
         let db, auth, userId;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -1161,8 +1160,17 @@
         let zombieModeStartTime = 0;
 
 
-        function init3D() {
-            scene = new THREE.Scene();
+        function init3D(mapSeed = 'default-seed', biomeIndex = 0) {
+            if(scene) { // Clear existing scene if any
+                while(scene.children.length > 0){ 
+                    scene.remove(scene.children[0]); 
+                }
+            } else {
+                 scene = new THREE.Scene();
+            }
+           
+            noise = new SimplexNoise(mapSeed);
+
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             
             renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -1282,7 +1290,7 @@
             skybox = new THREE.Mesh(skyGeometry, skyMaterial);
             scene.add(skybox);
 
-            changeBiome();
+            changeBiome(biomeIndex);
         }
 
         // --- POMODORO LOGIC ---
@@ -1454,9 +1462,9 @@
             const detailScale = 0.1;
             const peakHeight = 20;
             let height = 0;
-            height += simplex.noise2D(x * detailScale * 0.5, y * detailScale * 0.5) * 0.5;
-            height += simplex.noise2D(x * detailScale * 1.5, y * detailScale * 1.5) * 0.25;
-            height += simplex.noise2D(x * detailScale * 4, y * detailScale * 4) * 0.1;
+            height += noise.noise2D(x * detailScale * 0.5, y * detailScale * 0.5) * 0.5;
+            height += noise.noise2D(x * detailScale * 1.5, y * detailScale * 1.5) * 0.25;
+            height += noise.noise2D(x * detailScale * 4, y * detailScale * 4) * 0.1;
             height = (height + 1) / 2;
             height = Math.pow(height, 1.5);
 
@@ -1705,7 +1713,10 @@
         ];
         let currentBiomeIndex = -1;
 
-        function changeBiome() {
+        async function changeBiome(index) {
+            if(index !== undefined) {
+                 currentBiomeIndex = index - 1;
+            }
             currentBiomeIndex = (currentBiomeIndex + 1) % biomes.length;
             const biome = biomes[currentBiomeIndex];
             
@@ -1715,6 +1726,11 @@
             
             scene.traverse(obj => { if(obj.isAmbientLight) obj.color.set(biome.ambient); });
             sunLight.color.set(biome.sun);
+
+             if (currentGameState.inMultiplayer && currentGameState.isHost) {
+                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                await updateDoc(gameRef, { biomeIndex: currentBiomeIndex });
+            }
         }
 
         // --- AUDIO ---
@@ -2208,6 +2224,8 @@
                     mode: mode,
                     status: 'waiting',
                     hostId: userId,
+                    mapSeed: Math.random().toString(),
+                    biomeIndex: Math.floor(Math.random() * biomes.length),
                     players: {
                         [userId]: { pomodoros: 0, trees: [], status: 'focus' }
                     },
@@ -2301,6 +2319,11 @@
                 }
 
                 const gameData = doc.data();
+                
+                if (noise === undefined && gameData.mapSeed) {
+                    init3D(gameData.mapSeed, gameData.biomeIndex);
+                }
+
                 currentGameState.playerCount = Object.keys(gameData.players).length;
                 currentGameState.playerIds = Object.keys(gameData.players);
 
@@ -2382,8 +2405,7 @@
             const p1Status = hostData ? hostData.status : null;
             const p2Status = guestData ? guestData.status : null;
 
-            if (currentGameState.isHost && 
-                (p1Status === 'shortBreak' || p1Status === 'longBreak') && 
+            if ((p1Status === 'shortBreak' || p1Status === 'longBreak') && 
                 (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
                 duelModeBtn.textContent = '⚔️ ¡Duelo! ⚔️';
                 duelModeBtn.classList.remove('hidden');
@@ -2637,18 +2659,21 @@
                     [`duel.players.${userId}.health`]: CLASS_STATS[className].maxHealth
                 });
 
-                // If I'm the host, check if both players have selected a class
-                if (currentGameState.isHost) {
-                    const gameSnap = await getDoc(gameRef);
-                    const duelData = gameSnap.data().duel;
-                    const p1Class = duelData.players[currentGameState.playerIds[0]]?.class;
-                    const p2Class = duelData.players[currentGameState.playerIds[1]]?.class;
-                    if (p1Class && p2Class) {
-                        await updateDoc(gameRef, { 'duel.status': 'active' });
+                const gameSnap = await getDoc(gameRef);
+                const duelData = gameSnap.data().duel;
+                const playerIds = Object.keys(duelData.players);
+                
+                const p1Class = duelData.players[playerIds[0]]?.class;
+                const p2Class = duelData.players[playerIds[1]]?.class;
+
+                if (playerIds.length === 2 && p1Class && p2Class) {
+                    // Only host transitions the game state to active
+                    if (currentGameState.isHost) {
+                         await updateDoc(gameRef, { 'duel.status': 'active' });
                     }
                 }
+
             } else if (singlePlayerDuelEnabled) {
-                // CAMBIO: Ahora la selección de clase inicia el modo zombis
                 classSelectionModal.classList.remove('active');
                 startZombieMode(className);
             }
@@ -2669,6 +2694,9 @@
             if (!state.isRunning) {
                 startTimer();
             }
+            
+            clearGrove(); // Clear trees for the duel
+            addVegetation();
 
             const opponentId = currentGameState.playerIds.find(id => id !== userId);
 
@@ -2819,6 +2847,7 @@
              projectile.userData.id = data.id;
              projectile.userData.range = data.range;
              projectile.userData.spawnTime = Date.now();
+             projectile.userData.initialPosition = data.position;
              
              scene.add(projectile);
              duelState.projectiles.push(projectile);
@@ -2946,7 +2975,7 @@
             shortBreakDurationInput.addEventListener('change', updateDurations);
             longBreakDurationInput.addEventListener('change', updateDurations);
 
-            biomeBtn.addEventListener('click', changeBiome);
+            biomeBtn.addEventListener('click', ()=>changeBiome());
             
             speedToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
