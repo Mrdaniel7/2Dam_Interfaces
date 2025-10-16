@@ -1748,6 +1748,8 @@
             soundSources.shot_rifle = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }, volume: -9.5 }).toDestination();
             soundSources.shot_shotgun = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.2 }, volume: -6.5 }).toDestination();
             soundSources.player_hit = new Tone.FMSynth({ harmonicity: 0.5, modulationIndex: 10, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 }, volume: -5 }).toDestination();
+            soundSources.hit_marker = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.05, sustain: 0, release: 0.1 }, volume: -15 }).toDestination();
+
             
             // Sound Pools for Zombies to prevent audio scheduling errors
             const ZOMBIE_DEATH_POOL_SIZE = 4;
@@ -2567,9 +2569,8 @@
                     if (id !== userId && duelState.remotePlayer) { // Update remote player
                         const remoteData = duelData.players[id];
                         if (remoteData.position) {
-                           duelState.remotePlayer.position.copy(remoteData.position);
-                           // In FPS, we care about the opponent's camera rotation for their body's direction
-                           duelState.remotePlayer.rotation.y = remoteData.rotationY;
+                           duelState.remotePlayer.userData.targetPosition.set(remoteData.position.x, remoteData.position.y, remoteData.position.z);
+                           duelState.remotePlayer.userData.targetRotationY = remoteData.rotationY;
                         }
                         duelState.players[id].health = remoteData.health;
                         duelState.players[id].score = remoteData.score;
@@ -2612,8 +2613,8 @@
                 const initialDuelState = {
                     status: 'selecting',
                     players: {
-                        [currentGameState.playerIds[0]]: { score: 0, health: 100 },
-                        [currentGameState.playerIds[1]]: { score: 0, health: 100 }
+                        [currentGameState.playerIds[0]]: { score: 0, health: 100, lastShot: 0 },
+                        [currentGameState.playerIds[1]]: { score: 0, health: 100, lastShot: 0 }
                     },
                     projectiles: []
                 };
@@ -2641,7 +2642,7 @@
                     const gameSnap = await getDoc(gameRef);
                     const duelData = gameSnap.data().duel;
                     const p1Class = duelData.players[currentGameState.playerIds[0]].class;
-                    const p2Class = duelData.players[currentGameState.playerIds[1]].class;
+                    const p2Class = duelData.players[currentGameState.playerIds[1]] ? duelData.players[currentGameState.playerIds[1]].class : null;
                     if (p1Class && p2Class) {
                         await updateDoc(gameRef, { 'duel.status': 'active' });
                     }
@@ -2675,7 +2676,22 @@
 
             try {
                 duelState.localPlayer = new PlayerController(true, myClass);
-                duelState.remotePlayer = new PlayerController(false, opponentClass).mesh;
+                
+                const remotePlayerGroup = new THREE.Group();
+                const bodyGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+                bodyGeo.translate(0, 0.5, 0);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                const remoteBody = new THREE.Mesh(bodyGeo, bodyMat);
+                remotePlayerGroup.add(remoteBody);
+
+                const remoteWeapon = duelState.localPlayer.createWeaponMesh(opponentClass);
+                remoteWeapon.position.set(0, 1.4, 0.4);
+                remotePlayerGroup.add(remoteWeapon);
+
+                scene.add(remotePlayerGroup);
+                duelState.remotePlayer = remotePlayerGroup;
+                duelState.remotePlayer.userData.targetPosition = new THREE.Vector3();
+                duelState.remotePlayer.userData.targetRotationY = 0;
 
                 duelState.localPlayer.respawn();
                 enableShooterControls();
@@ -2962,7 +2978,7 @@
             volumeSlider.addEventListener('input', () => updateVolume());
 
             document.addEventListener('click', (e) => {
-                if (duelState.active && !pointerLockControls.isLocked) {
+                if ((duelState.active || zombieModeState.active) && !pointerLockControls.isLocked) {
                     pointerLockControls.lock();
                 }
                 if (soundPanel && !soundPanel.contains(e.target) && !soundMenuBtn.contains(e.target)) {
@@ -3087,6 +3103,11 @@
             if (duelState.localPlayer) {
                 duelState.localPlayer.update(delta);
             }
+             if (duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) {
+                duelState.remotePlayer.position.lerp(duelState.remotePlayer.userData.targetPosition, delta * 10);
+                const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), duelState.remotePlayer.userData.targetRotationY);
+                duelState.remotePlayer.quaternion.slerp(q, delta * 10);
+            }
             if ((duelState.active || zombieModeState.active) && duelState.localPlayer) {
                 checkIfStuck(); 
             } else {
@@ -3131,8 +3152,12 @@
                         }
                     } else if (duelState.remotePlayer) {
                         // Hitting opponent in duel mode
-                        if (p.position.distanceTo(duelState.remotePlayer.position) < 1.5) {
-                            if (currentGameState.inMultiplayer) {
+                        const remotePlayerBox = new THREE.Box3().setFromObject(duelState.remotePlayer);
+                        if (remotePlayerBox.containsPoint(p.position)) {
+                             if (currentGameState.inMultiplayer) {
+                                if(isAudioReady && soundSources.hit_marker) {
+                                    soundSources.hit_marker.triggerAttackRelease("C7", "32n");
+                                }
                                 const opponentId = currentGameState.playerIds.find(id => id !== userId);
                                 const myClass = duelState.players[userId].class;
                                 const damage = CLASS_STATS[myClass].weapon.damage;
@@ -3881,9 +3906,11 @@
                         
                         // Use the synth pool for steps
                         const stepSynth = soundSources.zombie_steps[soundSources.zombie_step_index];
-                        stepSynth.volume.value = volume;
-                        stepSynth.triggerAttackRelease("C1", "16n", Tone.now());
-                        soundSources.zombie_step_index = (soundSources.zombie_step_index + 1) % soundSources.zombie_steps.length;
+                        if (stepSynth.state === 'stopped') {
+                           stepSynth.volume.value = volume;
+                           stepSynth.triggerAttackRelease("C1", "16n", Tone.now());
+                           soundSources.zombie_step_index = (soundSources.zombie_step_index + 1) % soundSources.zombie_steps.length;
+                        }
                     }
                 }
                 if (Date.now() - this.lastGrowlTime > this.nextGrowlDelay) {
@@ -3893,9 +3920,11 @@
                     
                     // Use the synth pool for growls
                     const growlSynth = soundSources.zombie_growls[soundSources.zombie_growl_index];
-                    growlSynth.volume.value = volume;
-                    growlSynth.triggerAttackRelease("G0", "1s", Tone.now());
-                    soundSources.zombie_growl_index = (soundSources.zombie_growl_index + 1) % soundSources.zombie_growls.length;
+                     if (growlSynth.state === 'stopped') {
+                        growlSynth.volume.value = volume;
+                        growlSynth.triggerAttackRelease("G0", "1s", Tone.now());
+                        soundSources.zombie_growl_index = (soundSources.zombie_growl_index + 1) % soundSources.zombie_growls.length;
+                    }
                 }
 
 
@@ -3924,8 +3953,10 @@
                 }
                 if(isAudioReady && soundSources.zombie_deaths) {
                     const deathSynth = soundSources.zombie_deaths[soundSources.zombie_death_index];
-                    deathSynth.triggerAttackRelease("F#1", "4n", Tone.now());
-                    soundSources.zombie_death_index = (soundSources.zombie_death_index + 1) % soundSources.zombie_deaths.length;
+                     if (deathSynth.state === 'stopped') {
+                        deathSynth.triggerAttackRelease("F#1", "4n", Tone.now());
+                        soundSources.zombie_death_index = (soundSources.zombie_death_index + 1) % soundSources.zombie_deaths.length;
+                    }
                 }
                 zombieModeState.kills++;
                 document.getElementById('zombie-kills-display').textContent = zombieModeState.kills;
