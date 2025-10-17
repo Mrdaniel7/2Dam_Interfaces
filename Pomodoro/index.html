@@ -1175,7 +1175,7 @@
             } else {
                  scene = new THREE.Scene();
             }
-           
+            
             noise = new SimplexNoise(mapSeed);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -1458,13 +1458,10 @@
         }
 
         // --- 3D FOREST LOGIC ---
-        // ===== VALIDACIÓN ADICIONAL EN getHeightAt =====
-        // Reemplaza tu función getHeightAt con esta versión más segura:
         function getHeightAt(x, y) {
             const floorSize = 200;
-            // Clamp a los límites del mapa
             if (Math.abs(x) > floorSize / 2 || Math.abs(y) > floorSize / 2) {
-                return 10; // Altura por defecto fuera del mapa
+                return 10; // Default height outside map boundaries
             }
             const detailScale = 0.1;
             const peakHeight = 20;
@@ -1646,7 +1643,7 @@
         
         async function growATree({ isSpecial = false, taskId = null, isPomodoroCompletion = false } = {}) {
             
-            const spawnRange = 190; // El tamaño del suelo es 200, dejamos un pequeño margen
+            const spawnRange = 190; // The floor size is 200, leave a small margin
             const x = (Math.random() - 0.5) * spawnRange;
             const z = (Math.random() - 0.5) * spawnRange;
             const y = getHeightAt(x,-z);
@@ -2531,7 +2528,7 @@
                             (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
                             duelModeBtn.textContent = '⚔️ ¡Duelo! ⚔️';
                             duelModeBtn.classList.remove('hidden');
-                            duelModeBtn.disabled = !currentGameState.isHost;
+                            duelModeBtn.disabled = false;
                         } else {
                             duelModeBtn.classList.add('hidden');
                         }
@@ -2851,7 +2848,7 @@
              }
         }
         
-        // ===== FUNCIÓN enableShooterControls CORREGIDA =====
+        // REVISED: Simplified and more reliable pointer lock handling
         function enableShooterControls() {
             orbitControls.enabled = false;
             
@@ -2860,12 +2857,14 @@
             };
             canvas.addEventListener('click', lockPointer);
             
+            // This function will be called if the pointer is unlocked (e.g., by pressing Esc)
             const onUnlock = () => {
-                 canvas.addEventListener('click', lockPointer);
+                 // Re-add the listener to allow re-locking by clicking again
+                 canvas.addEventListener('click', lockPointer, { once: true });
             };
             pointerLockControls.addEventListener('unlock', onUnlock);
 
-            // Initial lock
+            // Initial lock attempt
             pointerLockControls.lock();
         }
 
@@ -2877,25 +2876,26 @@
         }
 
         async function spawnProjectile(data, isLocal) {
-             const projectileGeo = new THREE.SphereGeometry(0.1, 8, 8);
-             const projectileMat = new THREE.MeshBasicMaterial({ color: 0xffeb3b });
-             const projectile = new THREE.Mesh(projectileGeo, projectileMat);
-             
-             projectile.position.copy(data.position);
-             projectile.userData.velocity = new THREE.Vector3().copy(data.velocity);
-             projectile.userData.owner = data.owner;
-             projectile.userData.id = data.id;
-             projectile.userData.range = data.range;
-             projectile.userData.spawnTime = Date.now();
-             projectile.userData.initialPosition = data.position;
-             projectile.userData.originalData = data;
-             
-             scene.add(projectile);
-             duelState.projectiles.push(projectile);
+            const projectileGeo = new THREE.SphereGeometry(0.1, 8, 8);
+            const projectileMat = new THREE.MeshBasicMaterial({ color: 0xffeb3b });
+            const projectile = new THREE.Mesh(projectileGeo, projectileMat);
+            
+            const position = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
+            const velocity = new THREE.Vector3(data.velocity.x, data.velocity.y, data.velocity.z);
+
+            projectile.position.copy(position);
+            projectile.userData.velocity = velocity;
+            projectile.userData.owner = data.owner;
+            projectile.userData.id = data.id;
+            projectile.userData.range = data.range;
+            projectile.userData.spawnTime = Date.now();
+            projectile.userData.originalData = data; // Keep the plain object for Firestore removal
+            
+            scene.add(projectile);
+            duelState.projectiles.push(projectile);
 
             if (isLocal && currentGameState.inMultiplayer) {
                 const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                
                 await updateDoc(gameRef, {
                     projectiles: arrayUnion(data)
                 });
@@ -2997,6 +2997,7 @@
                 });
             });
             
+            
             [settingsModal, tasksModal, aiTutorModal, multiplayerModal, classSelectionModal].forEach(modal => {
                 if (modal) {
                     modal.addEventListener('click', (e) => {
@@ -3051,9 +3052,6 @@
             volumeSlider.addEventListener('input', () => updateVolume());
 
             document.addEventListener('click', (e) => {
-                if ((duelState.active || zombieModeState.active) && !pointerLockControls.isLocked) {
-                   // Pointer lock is now handled by enableShooterControls
-                }
                 if (soundPanel && !soundPanel.contains(e.target) && !soundMenuBtn.contains(e.target)) {
                     soundPanel.classList.remove('active');
                 }
@@ -3205,6 +3203,8 @@
             // Update projectiles
             for (let i = duelState.projectiles.length - 1; i >= 0; i--) {
                 const p = duelState.projectiles[i];
+                if (!p || !p.userData || !p.userData.velocity) continue;
+                
                 p.position.addScaledVector(p.userData.velocity, delta);
                 let projectileRemoved = false;
 
@@ -3228,19 +3228,20 @@
                         const remotePlayerBox = new THREE.Box3().setFromObject(duelState.remotePlayer);
                         if (remotePlayerBox.containsPoint(p.position)) {
                              if (currentGameState.inMultiplayer) {
-                                if(isAudioReady && soundSources.hit_marker) {
-                                    soundSources.hit_marker.triggerAttackRelease("C7", "32n");
-                                }
+                                 if(isAudioReady && soundSources.hit_marker) {
+                                     soundSources.hit_marker.triggerAttackRelease("C7", "32n");
+                                 }
                                 const opponentId = currentGameState.playerIds.find(id => id !== userId);
-                                const myClass = duelState.players[userId].class;
-                                const damage = CLASS_STATS[myClass].weapon.damage;
+                                const damage = duelState.localPlayer.classStats.weapon.damage;
                                 const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                                 const plainProjectileData = p.userData.originalData;
 
-                                updateDoc(gameRef, {
-                                    [`duel.players.${opponentId}.health`]: increment(-damage),
-                                    projectiles: arrayRemove(plainProjectileData)
-                                });
+                                if(plainProjectileData) {
+                                    updateDoc(gameRef, {
+                                        [`duel.players.${opponentId}.health`]: increment(-damage),
+                                        projectiles: arrayRemove(plainProjectileData)
+                                    });
+                                }
                             }
                             scene.remove(p);
                             duelState.projectiles.splice(i, 1);
@@ -3348,7 +3349,7 @@
         
         main();
 
-        // ===== PLAYER CONTROLLER COMPLETAMENTE REESCRITO =====
+        // ===== PLAYER CONTROLLER REFACTORIZADO Y MEJORADO =====
         class PlayerController {
             constructor(isLocal, playerClass) {
                 this.isLocal = isLocal;
@@ -3364,56 +3365,45 @@
                 this.bobTime = 0;
                 this.recoil = new THREE.Vector3();
                 this.recoilTarget = new THREE.Vector3();
-                // Nuevos: Detección de estado inválido
+                // Detección de estado inválido
                 this.fallTimer = 0;
                 this.stuckTimer = 0;
                 this.lastValidPosition = new THREE.Vector3(0, 20, 0);
                 this.timeSinceLastHit = 0; // Para regeneración de vida
                 this.lastHitTime = 0;
                 this.keys = {
-                    KeyW: false,
-                    KeyA: false,
-                    KeyS: false,
-                    KeyD: false,
-                    Space: false,
-                    ShiftLeft: false
+                    KeyW: false, KeyA: false, KeyS: false, KeyD: false,
+                    Space: false, ShiftLeft: false
                 };
-                this.mouse = {
-                    down: false
-                };
+                this.mouse = { down: false };
+
                 if (this.isLocal) {
                     this.camera = camera;
                     this.weapon = this.createWeaponMesh(playerClass);
                     this.camera.add(this.weapon);
-                    this.mesh = new THREE.Group();
-                    document.addEventListener('keydown', (e) => {
-                        if (this.keys.hasOwnProperty(e.code)) {
-                            this.keys[e.code] = true;
-                        }
-                    });
-                    document.addEventListener('keyup', (e) => {
-                        if (this.keys.hasOwnProperty(e.code)) {
-                            this.keys[e.code] = false;
-                        }
-                    });
-                    document.addEventListener('mousedown', () => {
-                        if (pointerLockControls.isLocked) {
-                            this.mouse.down = true;
-                        }
-                    });
-                    document.addEventListener('mouseup', () => {
-                        this.mouse.down = false;
-                    });
-                } else {
-                    const bodyGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
-                    const bodyMat = new THREE.MeshStandardMaterial({
-                        color: 0xff0000
-                    });
-                    this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
-                    scene.add(this.mesh);
-                    this.mesh.position.set(Math.random() * 40 - 20, 20, Math.random() * 40 - 20);
+                    this.mesh = new THREE.Group(); // Placeholder for local player
+                    this.addLocalEventListeners();
                 }
             }
+            
+            addLocalEventListeners() {
+                const onKey = (e) => {
+                    if (this.keys.hasOwnProperty(e.code)) {
+                         this.keys[e.code] = e.type === 'keydown';
+                    }
+                };
+                document.addEventListener('keydown', onKey);
+                document.addEventListener('keyup', onKey);
+
+                const onMouse = (e) => {
+                    if (pointerLockControls.isLocked) {
+                        this.mouse.down = e.type === 'mousedown';
+                    }
+                };
+                document.addEventListener('mousedown', onMouse);
+                document.addEventListener('mouseup', onMouse);
+            }
+            
             takeDamage(amount) {
                 if (this.isRespawning) return;
                 this.health -= amount;
@@ -3430,80 +3420,44 @@
 
                 updateDuelHud();
             }
+
             playShotSound() {
                 if (!isAudioReady) return;
                 switch (this.playerClass) {
-                    case 'scout':
-                        soundSources.shot_pistol.triggerAttack();
-                        break;
-                    case 'soldier':
-                        soundSources.shot_rifle.triggerAttack();
-                        break;
-                    case 'tank':
-                        soundSources.shot_shotgun.triggerAttack();
-                        break;
+                    case 'scout': soundSources.shot_pistol.triggerAttack(); break;
+                    case 'soldier': soundSources.shot_rifle.triggerAttack(); break;
+                    case 'tank': soundSources.shot_shotgun.triggerAttack(); break;
                 }
             }
+
             createWeaponMesh(playerClass) {
                 const weaponGroup = new THREE.Group();
-                const darkGray = new THREE.MeshStandardMaterial({
-                    color: 0x333333,
-                    roughness: 0.4,
-                    metalness: 0.5
-                });
-                const lightGray = new THREE.MeshStandardMaterial({
-                    color: 0x888888,
-                    roughness: 0.4,
-                    metalness: 0.7
-                });
+                const darkGray = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.5 });
+                const lightGray = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.7 });
                 switch (playerClass) {
                     case 'scout':
-                        const pistolBody = new THREE.Mesh(
-                            new THREE.BoxGeometry(0.08, 0.1, 0.2),
-                            darkGray
-                        );
-                        const pistolGrip = new THREE.Mesh(
-                            new THREE.BoxGeometry(0.06, 0.2, 0.06),
-                            darkGray
-                        );
+                        const pistolBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.2), darkGray);
+                        const pistolGrip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.06), darkGray);
                         pistolGrip.position.set(0, -0.1, -0.05);
                         pistolGrip.rotation.x = 0.2;
-                        const pistolBarrel = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8),
-                            lightGray
-                        );
+                        const pistolBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8), lightGray);
                         pistolBarrel.position.set(0, 0.03, 0.15);
                         pistolBarrel.rotation.x = Math.PI / 2;
                         weaponGroup.add(pistolBody, pistolGrip, pistolBarrel);
                         break;
                     case 'soldier':
-                        const rifleBody = new THREE.Mesh(
-                            new THREE.BoxGeometry(0.1, 0.12, 0.5),
-                            darkGray
-                        );
-                        const rifleBarrel = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8),
-                            lightGray
-                        );
+                        const rifleBody = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.5), darkGray);
+                        const rifleBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8), lightGray);
                         rifleBarrel.position.set(0, -0.02, 0.45);
                         rifleBarrel.rotation.x = Math.PI / 2;
-                        const rifleScope = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.03, 0.03, 0.15, 12),
-                            darkGray
-                        );
+                        const rifleScope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 12), darkGray);
                         rifleScope.position.set(0, 0.1, 0);
                         rifleScope.rotation.z = Math.PI / 2;
                         weaponGroup.add(rifleBody, rifleBarrel, rifleScope);
                         break;
                     case 'tank':
-                        const shotgunBody = new THREE.Mesh(
-                            new THREE.BoxGeometry(0.12, 0.14, 0.6),
-                            darkGray
-                        );
-                        const shotgunBarrel = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8),
-                            lightGray
-                        );
+                        const shotgunBody = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 0.6), darkGray);
+                        const shotgunBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), lightGray);
                         shotgunBarrel.position.set(0, -0.02, 0.4);
                         shotgunBarrel.rotation.x = Math.PI / 2;
                         weaponGroup.add(shotgunBody, shotgunBarrel);
@@ -3512,114 +3466,81 @@
                 weaponGroup.position.set(0.25, -0.4, -0.6);
                 return weaponGroup;
             }
+
             dispose() {
                 if (this.isLocal && this.weapon) {
                     this.camera.remove(this.weapon);
                 }
                 scene.remove(this.mesh);
             }
-            // ===== NUEVO SISTEMA DE SPAWN ROBUSTO =====
+            
             async respawn() {
                 console.log("🔄 Iniciando respawn...");
                 this.health = this.classStats.maxHealth;
                 this.isRespawning = true;
                 this.onGround = false;
                 this.velocity.set(0, 0, 0);
-                const MAX_ATTEMPTS = 50;
-                const MIN_TREE_DISTANCE = 3.5; // Distancia segura de árboles
-                const SPAWN_RADIUS = 70;
-                const MIN_HEIGHT = 2; // Altura mínima válida del terreno
-                const MAX_HEIGHT = 25; // Altura máxima válida
-                const CAMERA_HEIGHT = 1.8;
-                let bestSpawn = null;
-                let bestScore = -Infinity;
-                // Buscar la MEJOR posición, no solo una válida
+
+                const MAX_ATTEMPTS = 50, MIN_TREE_DISTANCE = 3.5, SPAWN_RADIUS = 70;
+                const MIN_HEIGHT = 2, MAX_HEIGHT = 25, CAMERA_HEIGHT = 1.8;
+                let bestSpawn = null, bestScore = -Infinity;
+
                 for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
                     const angle = Math.random() * Math.PI * 2;
                     const radius = Math.random() * SPAWN_RADIUS;
-                    const testX = Math.cos(angle) * radius;
-                    const testZ = Math.sin(angle) * radius;
-                    // Validar altura del terreno
+                    const testX = Math.cos(angle) * radius, testZ = Math.sin(angle) * radius;
                     const testY = getHeightAt(testX, -testZ);
-                    if (!isFinite(testY) || testY < MIN_HEIGHT || testY > MAX_HEIGHT) {
-                        continue; // Terreno inválido
-                    }
-                    // Calcular distancia mínima a cualquier árbol
-                    let minTreeDist = Infinity;
-                    let tooClose = false;
+
+                    if (!isFinite(testY) || testY < MIN_HEIGHT || testY > MAX_HEIGHT) continue;
+
+                    let minTreeDist = Infinity, tooClose = false;
                     for (const tree of grove) {
-                        const dx = testX - tree.position.x;
-                        const dz = testZ - tree.position.z;
-                        const dist = Math.sqrt(dx * dx + dz * dz);
-                        if (dist < MIN_TREE_DISTANCE) {
-                            tooClose = true;
-                            break;
-                        }
+                        const dist = Math.hypot(testX - tree.position.x, testZ - tree.position.z);
+                        if (dist < MIN_TREE_DISTANCE) { tooClose = true; break; }
                         minTreeDist = Math.min(minTreeDist, dist);
                     }
                     if (tooClose) continue;
-                    // Puntuación: prefiere zonas planas y lejos de árboles
-                    const flatness = 10 - Math.abs(testY - 10); // Prefiere altura media
-                    const treeScore = Math.min(minTreeDist, 10); // Bonus por lejanía
-                    const score = flatness + treeScore;
+
+                    const score = (10 - Math.abs(testY - 10)) + Math.min(minTreeDist, 10);
                     if (score > bestScore) {
                         bestScore = score;
-                        bestSpawn = {
-                            x: testX,
-                            y: testY,
-                            z: testZ
-                        };
+                        bestSpawn = { x: testX, y: testY, z: testZ };
                     }
                 }
-                // Fallback absoluto si no se encuentra posición
+
                 if (!bestSpawn) {
                     console.warn("⚠️ No se encontró spawn seguro, usando posición central elevada");
-                    bestSpawn = {
-                        x: 0,
-                        y: 15,
-                        z: 0
-                    };
+                    bestSpawn = { x: 0, y: 15, z: 0 };
                 }
-                const finalPos = new THREE.Vector3(
-                    bestSpawn.x,
-                    bestSpawn.y + CAMERA_HEIGHT,
-                    bestSpawn.z
-                );
+                
+                const finalPos = new THREE.Vector3(bestSpawn.x, bestSpawn.y + CAMERA_HEIGHT, bestSpawn.z);
                 console.log(`✅ Spawn encontrado en (${finalPos.x.toFixed(2)}, ${finalPos.y.toFixed(2)}, ${finalPos.z.toFixed(2)})`);
-                // Aplicar posición
+
                 if (this.isLocal) {
                     const cameraObject = pointerLockControls.getObject();
                     cameraObject.position.copy(finalPos);
-                    // Resetear rotación vertical para evitar pantalla negra
-                    camera.rotation.x = 0;
-                    camera.rotation.z = 0;
-                } else {
-                    this.mesh.position.copy(finalPos);
+                    camera.rotation.set(0, camera.rotation.y, 0); // Reset pitch and roll
                 }
-                // Guardar como última posición válida
+                
                 this.lastValidPosition.copy(finalPos);
                 this.fallTimer = 0;
                 this.stuckTimer = 0;
                 this.isRespawning = false;
-                // Sincronizar con Firebase si es necesario
+                
                 if (this.isLocal && currentGameState.inMultiplayer) {
                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                     await updateDoc(gameRef, {
-                        [`duel.players.${userId}.position`]: {
-                            x: finalPos.x,
-                            y: finalPos.y,
-                            z: finalPos.z
-                        },
+                        [`duel.players.${userId}.position`]: { x: finalPos.x, y: finalPos.y, z: finalPos.z },
                         [`duel.players.${userId}.health`]: this.health
                     });
                 }
             }
-            // ===== SISTEMA DE MOVIMIENTO MEJORADO CON VALIDACIONES =====
+
             update(delta) {
                 if (!this.isLocal) return;
                 const cameraObject = pointerLockControls.getObject();
                 
-                // 1. Detección de caída infinita y vida cero
+                // 1. Health and Fall Detection
                 if ((cameraObject.position.y < -5 || this.health <= 0) && !this.isRespawning) {
                     if (zombieModeState.active) {
                         document.getElementById('death-modal-round').textContent = zombieModeState.round;
@@ -3627,7 +3548,7 @@
                         document.getElementById('zombie-death-modal').classList.add('active');
                         disableShooterControls();
                         this.isRespawning = true; 
-                        pauseTimer(); // CAMBIO: Pausar el temporizador al morir
+                        pauseTimer();
                     } else if (currentGameState.inMultiplayer) {
                         const opponentId = currentGameState.playerIds.find(id => id !== userId);
                         const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
@@ -3637,199 +3558,86 @@
                     return;
                 }
 
-                // 2. Detección de caída prolongada (más de 3 segundos cayendo)
-                if (this.velocity.y < -5 && !this.onGround) {
-                    this.fallTimer += delta;
-                    if (this.fallTimer > 3.0) {
-                        console.warn("❌ Caída prolongada detectada, respawneando...");
-                        this.respawn();
-                        return;
-                    }
-                } else {
-                    this.fallTimer = 0;
-                }
-                // 3. Detección de atascamiento (sin movimiento durante 2 segundos)
-                if (pointerLockControls.isLocked) {
-                    const distMoved = cameraObject.position.distanceTo(this.lastValidPosition);
-                    if (distMoved < 0.1 && (this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD)) {
-                        this.stuckTimer += delta;
-                        if (this.stuckTimer > 2.0) {
-                            console.warn("❌ Jugador atascado, respawneando...");
-                            this.respawn();
-                            return;
-                        }
-                    } else if (distMoved > 0.5) {
-                        this.stuckTimer = 0;
-                        this.lastValidPosition.copy(cameraObject.position);
-                    }
-                }
-                 // ===== REGENERACIÓN DE VIDA =====
+                // 2. Health Regeneration
                 this.timeSinceLastHit += delta;
                 if (this.timeSinceLastHit > 5.0 && this.health < this.classStats.maxHealth) {
-                    const regenRate = 20; // Health per second
-                    this.health += regenRate * delta;
-                    if (this.health > this.classStats.maxHealth) {
-                        this.health = this.classStats.maxHealth;
-                    }
-                    updateDuelHud(); // Update the UI
+                    this.health = Math.min(this.classStats.maxHealth, this.health + 20 * delta);
+                    updateDuelHud();
                 }
-                // ===== MOVIMIENTO Y COLISIONES =====
-                const speed = this.classStats.speed;
-                const isMoving = this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD;
-                // Gravedad
-                const gravity = this.isRespawning ? 8.0 : 30.0;
-                this.velocity.y -= gravity * delta;
-                // Dirección de movimiento
+
+                // 3. Movement
+                const speed = this.classStats.speed * (this.keys.ShiftLeft ? 1.5 : 1);
+                this.velocity.y -= 30.0 * delta; // Gravity
+
                 this.direction.z = Number(this.keys.KeyW) - Number(this.keys.KeyS);
                 this.direction.x = Number(this.keys.KeyA) - Number(this.keys.KeyD);
+
                 this.direction.normalize();
-                const effectiveSpeed = this.keys.ShiftLeft ? speed * 1.5 : speed;
-                // Calcular vectores de movimiento
+
                 const forwardVector = new THREE.Vector3();
                 cameraObject.getWorldDirection(forwardVector);
                 forwardVector.y = 0;
                 forwardVector.normalize();
-                const rightVector = new THREE.Vector3().crossVectors(cameraObject.up, forwardVector);
-                const moveX = (this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * effectiveSpeed * delta;
-                const moveZ = (this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * effectiveSpeed * delta;
-                // Calcular próxima posición
-                const nextPos = cameraObject.position.clone();
-                nextPos.x += moveX;
-                nextPos.z += moveZ;
-                // ===== COLISIÓN MEJORADA CON ÁRBOLES =====
-                let collision = false;
-                const PLAYER_RADIUS = 0.6; // Radio del jugador
-                const TREE_RADIUS = 0.8; // Radio del tronco del árbol
-                for (const tree of grove) {
-                    const dx = nextPos.x - tree.position.x;
-                    const dz = nextPos.z - tree.position.z;
-                    const distance = Math.sqrt(dx * dx + dz * dz);
-                    if (distance < PLAYER_RADIUS + TREE_RADIUS) {
-                        collision = true;
-                        // Empujar al jugador fuera del árbol (slide)
-                        const pushAngle = Math.atan2(dz, dx);
-                        const pushDist = (PLAYER_RADIUS + TREE_RADIUS) - distance + 0.1;
-                        nextPos.x += Math.cos(pushAngle) * pushDist;
-                        nextPos.z += Math.sin(pushAngle) * pushDist;
-                        break;
-                    }
-                }
-                // Aplicar movimiento horizontal solo si no hay colisión frontal
-                if (!collision) {
-                    cameraObject.position.x = nextPos.x;
-                    cameraObject.position.z = nextPos.z;
-                }
                 
-                // ===== MOVIMIENTO VERTICAL Y TERRENO REFACTORIZADO =====
+                const rightVector = new THREE.Vector3().crossVectors(cameraObject.up, forwardVector);
+
+                const moveX = (this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * speed * delta;
+                const moveZ = (this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * speed * delta;
+                
+                cameraObject.position.x += moveX;
+                cameraObject.position.z += moveZ;
                 cameraObject.position.y += this.velocity.y * delta;
-                let onSolidSurface = false;
-                const playerFeetY = cameraObject.position.y - 1.8;
-
-                // 1. Comprobar colisión con copas de los árboles primero
-                if (this.velocity.y <= 0) { // Solo comprobar al caer
-                    for (const tree of grove) {
-                        const dx = cameraObject.position.x - tree.position.x;
-                        const dz = cameraObject.position.z - tree.position.z;
-                        const horizontalDistSq = dx * dx + dz * dz;
-                        const canopyCheckRadiusSq = 3 * 3; // Radio de comprobación generoso
-
-                        if (horizontalDistSq < canopyCheckRadiusSq) {
-                            // Saltar el tronco (hijo 0) y comprobar las otras partes
-                            for (let i = 1; i < tree.children.length; i++) {
-                                const canopyPart = tree.children[i];
-                                const canopyBox = new THREE.Box3().setFromObject(canopyPart);
-                                if (cameraObject.position.x > canopyBox.min.x && cameraObject.position.x < canopyBox.max.x &&
-                                    cameraObject.position.z > canopyBox.min.z && cameraObject.position.z < canopyBox.max.z) {
-                                    
-                                    const canopyTopY = canopyBox.max.y;
-                                    // Comprobar si el jugador estaba arriba y ahora está en o debajo de la copa
-                                    if (playerFeetY <= canopyTopY && (playerFeetY - this.velocity.y * delta) > canopyTopY) {
-                                        this.velocity.y = 0;
-                                        cameraObject.position.y = canopyTopY + 1.8;
-                                        onSolidSurface = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if (onSolidSurface) break;
-                    }
+                
+                const groundY = getHeightAt(cameraObject.position.x, -cameraObject.position.z) + 1.8;
+                if (cameraObject.position.y < groundY) {
+                    cameraObject.position.y = groundY;
+                    this.velocity.y = 0;
+                    this.onGround = true;
+                } else {
+                    this.onGround = false;
                 }
 
-                // 2. Si no está en una copa, comprobar colisión con el suelo
-                if (!onSolidSurface) {
-                    const groundY = getHeightAt(cameraObject.position.x, -cameraObject.position.z) + 1.8;
-                    if (!isFinite(groundY)) {
-                        console.warn("⚠️ Altura de terreno inválida, respawneando...");
-                        this.respawn();
-                        return;
-                    }
-                    if (cameraObject.position.y <= groundY) {
-                        this.velocity.y = 0;
-                        cameraObject.position.y = groundY;
-                        onSolidSurface = true;
-                    }
-                }
-
-                // Establecer estado onGround
-                this.onGround = onSolidSurface;
-                if (this.onGround && this.isRespawning) {
-                    this.isRespawning = false;
-                }
-
-                // Salto
                 if (this.keys.Space && this.onGround) {
                     this.velocity.y = this.classStats.jumpHeight;
                 }
-                
-                // Sincronizar mesh del jugador
-                this.mesh.position.set(
-                    cameraObject.position.x,
-                    cameraObject.position.y - 0.8,
-                    cameraObject.position.z
-                );
-                // ===== DISPARO =====
-                if (this.mouse.down && pointerLockControls.isLocked) {
-                    const now = Date.now();
-                    if (now - this.lastShotTime >= this.classStats.weapon.fireRate) {
-                        this.lastShotTime = now;
-                        this.playShotSound();
-                        this.recoilTarget.z = 0.1;
-                        const direction = new THREE.Vector3();
-                        this.camera.getWorldDirection(direction);
-                        const spawnPos = this.camera.position.clone().add(direction.clone().multiplyScalar(0.5)); // Spawn slightly in front
-                        
-                        const projectileData = {
-                            id: THREE.MathUtils.generateUUID(),
-                            owner: userId,
-                            position: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
-                            velocity: { x: direction.x * this.classStats.weapon.projectileSpeed, y: direction.y * this.classStats.weapon.projectileSpeed, z: direction.z * this.classStats.weapon.projectileSpeed },
-                            range: this.classStats.weapon.range,
-                        };
-                        spawnProjectile(projectileData, true);
-                    }
+
+                // 4. Shooting
+                if (this.mouse.down && pointerLockControls.isLocked && Date.now() - this.lastShotTime >= this.classStats.weapon.fireRate) {
+                    this.lastShotTime = Date.now();
+                    this.playShotSound();
+                    this.recoilTarget.z = 0.1;
+                    
+                    const direction = new THREE.Vector3();
+                    this.camera.getWorldDirection(direction);
+                    const spawnPos = this.camera.position.clone().add(direction.clone().multiplyScalar(0.5));
+                    
+                    const projectileData = {
+                        id: THREE.MathUtils.generateUUID(),
+                        owner: userId,
+                        position: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
+                        velocity: { x: direction.x * this.classStats.weapon.projectileSpeed, y: direction.y * this.classStats.weapon.projectileSpeed, z: direction.z * this.classStats.weapon.projectileSpeed },
+                        range: this.classStats.weapon.range,
+                    };
+                    spawnProjectile(projectileData, true);
                 }
-                // ===== ANIMACIÓN DE ARMA =====
+
+                // 5. Weapon Animation
+                const isMoving = this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD;
                 this.bobTime += delta * (speed * (isMoving && this.onGround ? 0.2 : 0));
                 this.weapon.position.y = -0.4 + Math.sin(this.bobTime) * 0.02;
                 this.weapon.position.x = 0.25 + Math.cos(this.bobTime * 0.5) * 0.01;
                 this.recoil.lerp(this.recoilTarget, delta * 20);
                 this.recoilTarget.lerp(new THREE.Vector3(), delta * 10);
                 this.weapon.position.z = -0.6 - this.recoil.z;
-                // ===== SINCRONIZACIÓN FIREBASE =====
-                if (Date.now() - this.lastSyncTime >= 100) {
+
+                // 6. Firebase Sync
+                if (Date.now() - this.lastSyncTime >= 100 && currentGameState.inMultiplayer) {
                     this.lastSyncTime = Date.now();
-                    if (currentGameState.inMultiplayer) {
-                        const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                        updateDoc(gameRef, {
-                            [`duel.players.${userId}.position`]: {
-                                x: this.mesh.position.x,
-                                y: this.mesh.position.y,
-                                z: this.mesh.position.z
-                            },
-                            [`duel.players.${userId}.rotationY`]: this.camera.rotation.y
-                        });
-                    }
+                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                    updateDoc(gameRef, {
+                        [`duel.players.${userId}.position`]: { x: cameraObject.position.x, y: cameraObject.position.y, z: cameraObject.position.z },
+                        [`duel.players.${userId}.rotationY`]: this.camera.rotation.y
+                    });
                 }
             }
         }
@@ -3865,67 +3673,39 @@
 
             createZombieFaceTexture() {
                 const canvas = document.createElement('canvas');
-                canvas.width = 128;
-                canvas.height = 128;
+                canvas.width = 128; canvas.height = 128;
                 const context = canvas.getContext('2d');
 
-                // Background: Green/Purple Radial Gradient for a diffused look
                 const gradient = context.createRadialGradient(64, 64, 10, 64, 64, 80);
-                gradient.addColorStop(0, '#43a047'); // Green center
-                gradient.addColorStop(1, '#5e35b1'); // Purple outer
+                gradient.addColorStop(0, '#43a047');
+                gradient.addColorStop(1, '#5e35b1');
                 context.fillStyle = gradient;
                 context.fillRect(0, 0, 128, 128);
 
-                // Add some noise/texture to the skin
                 for (let i = 0; i < 1000; i++) {
                     context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2})`;
                     context.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
                 }
                 
-                // Sunken eye sockets
                 context.fillStyle = 'rgba(0,0,0,0.5)';
-                context.beginPath();
-                context.arc(45, 50, 12, 0, Math.PI * 2);
-                context.fill();
-                context.beginPath();
-                context.arc(83, 50, 12, 0, Math.PI * 2);
-                context.fill();
+                context.beginPath(); context.arc(45, 50, 12, 0, Math.PI * 2); context.fill();
+                context.beginPath(); context.arc(83, 50, 12, 0, Math.PI * 2); context.fill();
 
-
-                // Eyes (glowing red)
-                context.fillStyle = '#ff1744'; // Bright red
-                context.beginPath();
-                context.arc(45, 50, 8, 0, Math.PI * 2); // Left eye
-                context.fill();
-                context.beginPath();
-                context.arc(83, 50, 8, 0, Math.PI * 2); // Right eye
-                context.fill();
+                context.fillStyle = '#ff1744';
+                context.beginPath(); context.arc(45, 50, 8, 0, Math.PI * 2); context.fill();
+                context.beginPath(); context.arc(83, 50, 8, 0, Math.PI * 2); context.fill();
                 
-                // Add a smaller, brighter pupil
-                context.fillStyle = '#ff8a80'; // Lighter red
-                context.beginPath();
-                context.arc(45, 50, 3, 0, Math.PI * 2);
-                context.fill();
-                context.beginPath();
-                context.arc(83, 50, 3, 0, Math.PI * 2);
-                context.fill();
+                context.fillStyle = '#ff8a80';
+                context.beginPath(); context.arc(45, 50, 3, 0, Math.PI * 2); context.fill();
+                context.beginPath(); context.arc(83, 50, 3, 0, Math.PI * 2); context.fill();
 
-                // Mouth (gaping)
                 context.fillStyle = 'black';
-                context.beginPath();
-                context.ellipse(64, 90, 25, 10, 0, 0, Math.PI * 2);
-                context.fill();
+                context.beginPath(); context.ellipse(64, 90, 25, 10, 0, 0, Math.PI * 2); context.fill();
                 
-                // Jagged Teeth
                 context.fillStyle = '#bbbbbb';
                 for(let i=0; i < 5; i++) {
                     const x = 45 + i * 8;
-                    context.beginPath();
-                    context.moveTo(x, 82);
-                    context.lineTo(x + 4, 82);
-                    context.lineTo(x + 2, 86);
-                    context.closePath();
-                    context.fill();
+                    context.beginPath(); context.moveTo(x, 82); context.lineTo(x + 4, 82); context.lineTo(x + 2, 86); context.closePath(); context.fill();
                 }
 
                 return new THREE.CanvasTexture(canvas);
@@ -3942,24 +3722,18 @@
             }
 
             update(delta, playerPosition) {
-                if (this.attackCooldown > 0) {
-                    this.attackCooldown -= delta;
-                }
-
-                // --- Navigation ---
+                if (this.attackCooldown > 0) this.attackCooldown -= delta;
+                
                 const direction = playerPosition.clone().sub(this.mesh.position).normalize();
-                direction.y = 0; // Zombies don't fly
+                direction.y = 0;
 
                 this.velocity.x = direction.x * this.speed;
                 this.velocity.z = direction.z * this.speed;
 
-                // --- Gravity and Ground Collision ---
-                this.velocity.y -= 30 * delta; // Gravity
-                this.mesh.position.x += this.velocity.x * delta;
-                this.mesh.position.z += this.velocity.z * delta;
-                this.mesh.position.y += this.velocity.y * delta;
+                this.velocity.y -= 30 * delta;
+                this.mesh.position.addScaledVector(this.velocity, delta);
                 
-                const groundY = getHeightAt(this.mesh.position.x, -this.mesh.position.z) + 1.1; // Capsule half-height
+                const groundY = getHeightAt(this.mesh.position.x, -this.mesh.position.z) + 1.1;
 
                 if (this.mesh.position.y < groundY) {
                     this.mesh.position.y = groundY;
@@ -3969,17 +3743,13 @@
                     this.onGround = false;
                 }
                 
-                // Make zombie look at player
                 this.mesh.lookAt(playerPosition.x, this.mesh.position.y, playerPosition.z);
 
-                // --- Sound Effects ---
                 const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
                 if (this.onGround && this.velocity.lengthSq() > 0.1) {
-                    if (Date.now() - this.lastStepTime > 500) { // Step every 500ms
+                    if (Date.now() - this.lastStepTime > 500) {
                         this.lastStepTime = Date.now();
                         const volume = -20 - Math.min(distanceToPlayer * 1.5, 20);
-                        
-                        // Use the synth pool for steps
                         const stepSynth = soundSources.zombie_steps[soundSources.zombie_step_index];
                         if (stepSynth.state === 'stopped') {
                            stepSynth.volume.value = volume;
@@ -3993,17 +3763,15 @@
                     this.nextGrowlDelay = 8000 + Math.random() * 8000;
                     const volume = -15 - Math.min(distanceToPlayer, 20);
                     
-                    // Use the synth pool for growls
                     const growlSynth = soundSources.zombie_growls[soundSources.zombie_growl_index];
                      if (growlSynth.state === 'stopped') {
-                        growlSynth.volume.value = volume;
-                        growlSynth.triggerAttackRelease("G0", "1s", Tone.now());
-                        soundSources.zombie_growl_index = (soundSources.zombie_growl_index + 1) % soundSources.zombie_growls.length;
+                         growlSynth.volume.value = volume;
+                         growlSynth.triggerAttackRelease("G0", "1s", Tone.now());
+                         soundSources.zombie_growl_index = (soundSources.zombie_growl_index + 1) % soundSources.zombie_growls.length;
                     }
                 }
 
 
-                // --- Player Attack Collision ---
                 if (distanceToPlayer < 2.0 && this.attackCooldown <= 0) {
                     if (duelState.localPlayer) {
                         duelState.localPlayer.takeDamage(this.damage);
@@ -4021,7 +3789,6 @@
 
             die() {
                 scene.remove(this.mesh);
-                // Find and remove this zombie from the main array
                 const index = zombieModeState.zombies.indexOf(this);
                 if (index > -1) {
                     zombieModeState.zombies.splice(index, 1);
@@ -4029,8 +3796,8 @@
                 if(isAudioReady && soundSources.zombie_deaths) {
                     const deathSynth = soundSources.zombie_deaths[soundSources.zombie_death_index];
                      if (deathSynth.state === 'stopped') {
-                        deathSynth.triggerAttackRelease("F#1", "4n", Tone.now());
-                        soundSources.zombie_death_index = (soundSources.zombie_death_index + 1) % soundSources.zombie_deaths.length;
+                         deathSynth.triggerAttackRelease("F#1", "4n", Tone.now());
+                         soundSources.zombie_death_index = (soundSources.zombie_death_index + 1) % soundSources.zombie_deaths.length;
                     }
                 }
                 zombieModeState.kills++;
