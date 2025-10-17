@@ -1132,6 +1132,7 @@
             playerCount: 1,
             playerIds: [],
         };
+        let lastProjectileCleanup = 0; // For Firestore cleanup
 
         // --- SINGLE PLAYER DUEL TEST ---
         let singlePlayerDuelEnabled = true;
@@ -2310,7 +2311,7 @@
         }
 
         function listenToGameChanges(gameId) {
-             if(currentGameState.unsubscribe) currentGameState.unsubscribe(); 
+            if(currentGameState.unsubscribe) currentGameState.unsubscribe(); 
             
             localStorage.setItem('focusGroveLastGame', gameId);
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
@@ -2331,8 +2332,8 @@
                 currentGameState.playerCount = Object.keys(gameData.players).length;
                 currentGameState.playerIds = Object.keys(gameData.players);
 
-
-                if (currentGameState.isHost && gameData.status === 'active' && !multiplayerWaitingView.classList.contains('hidden')) {
+                // FIX 1: Close waiting modal based on player count
+                if (currentGameState.isHost && Object.keys(gameData.players).length > 1 && !multiplayerWaitingView.classList.contains('hidden')) {
                     multiplayerModal.classList.remove('active');
                 }
                 
@@ -2341,7 +2342,7 @@
                     versusScoreboard.classList.add('hidden');
                 } else if (gameData.mode === 'versus') {
                     syncVersusState(gameData);
-                    syncDuelState(gameData); // New function for minigame sync
+                    syncDuelState(gameData);
                 }
             });
         }
@@ -2752,7 +2753,7 @@
                 bodyGeo.translate(0, 0.5, 0);
                 // Mejora 4: Color distintivo
                 const bodyMat = new THREE.MeshStandardMaterial({
-                    color: opponentId === gameData.hostId ? 0x00ff00 : 0xff0000 // Verde para host, rojo para invitado
+                    color: opponentId === gameData.hostId ? 0x4a90e2 : 0xe24a4a // Primary for host, Secondary for guest
                 });
                 const remoteBody = new THREE.Mesh(bodyGeo, bodyMat);
                 remoteBody.castShadow = true;
@@ -2895,8 +2896,7 @@
             projectile.userData.velocity = velocity;
             projectile.userData.owner = data.owner;
             projectile.userData.id = data.id;
-            projectile.userData.range = data.range;
-            projectile.userData.spawnTime = Date.now();
+            projectile.userData.spawnTime = data.spawnTime;
             projectile.userData.originalData = data;
             
             scene.add(projectile);
@@ -2935,6 +2935,29 @@
             if (stuckCount >= 4) {
                 console.warn("Player stuck! Forcing respawn.");
                 duelState.localPlayer.respawn();
+            }
+        }
+
+        async function cleanUpProjectiles() {
+            if (!currentGameState.inMultiplayer || !currentGameState.isHost || !duelState.active) return;
+            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+            try {
+                const gameSnap = await getDoc(gameRef);
+                if (gameSnap.exists()) {
+                    const gameData = gameSnap.data();
+                    const projectiles = gameData.duel?.projectiles || [];
+                    const now = Date.now();
+                    const projectilesToRemove = projectiles.filter(p => now - (p.spawnTime || 0) > 2000);
+
+                    if (projectilesToRemove.length > 0) {
+                        await updateDoc(gameRef, {
+                            projectiles: arrayRemove(...projectilesToRemove)
+                        });
+                    }
+                }
+            } catch (e) {
+                // This might fail if quota is still an issue, but we don't want it to crash the app
+                console.warn("Could not clean up projectiles:", e.message);
             }
         }
 
@@ -3172,6 +3195,12 @@
         function animate() {
             requestAnimationFrame(animate);
             
+            const now = Date.now();
+            if (currentGameState.isHost && now - lastProjectileCleanup > 2000) { // Every 2 seconds
+                lastProjectileCleanup = now;
+                cleanUpProjectiles();
+            }
+
             if (!document.getElementById('credit-line')) {
                 addCreditLine();
             }
@@ -3221,27 +3250,24 @@
                 const p = duelState.projectiles[i];
                 if (!p || !p.userData || !p.userData.velocity) continue;
                 
-                // Store previous position for raycasting
-                if (!p.userData.prevPosition) {
-                    p.userData.prevPosition = p.position.clone();
-                } else {
-                    p.userData.prevPosition.copy(p.position);
-                }
+                if (!p.userData.prevPosition) p.userData.prevPosition = p.position.clone();
+                else p.userData.prevPosition.copy(p.position);
 
                 p.position.addScaledVector(p.userData.velocity, delta);
                 let projectileRemoved = false;
 
                 if (p.userData.owner === userId) {
                     if (zombieModeState.active) {
-                        // ... (zombie collision unchanged)
+                        // ... zombie logic ...
                     } else if (duelState.remotePlayer) {
                         // ========== CORRECCIÓN 2: RAYCAST PRECISO ==========
                         const prevPos = p.userData.prevPosition;
                         const currentPos = p.position.clone();
-                        const direction = new THREE.Vector3().subVectors(currentPos, prevPos).normalize();
-                        const distance = prevPos.distanceTo(currentPos);
+                        const direction = new THREE.Vector3().subVectors(currentPos, prevPos);
+                        const distance = direction.length();
+                        direction.normalize();
                         
-                        if (distance > 0) { // Only cast if the projectile moved
+                        if (distance > 0) {
                             const raycaster = new THREE.Raycaster(prevPos, direction, 0, distance);
                             const intersects = raycaster.intersectObject(duelState.remotePlayer, true);
 
@@ -3272,7 +3298,6 @@
                 }
                 if (projectileRemoved) continue;
 
-                // Hitting Trees
                 let hitTree = false;
                 for (const tree of grove) {
                     const trunk = tree.children[0];
@@ -3290,14 +3315,12 @@
                     continue;
                 }
 
-                // Despawn projectile after time/range
-                if (Date.now() - p.userData.spawnTime > p.userData.range * 100) {
+                if (Date.now() - p.userData.spawnTime > 2000) { // 2 second lifetime
                     scene.remove(p);
                     duelState.projectiles.splice(i, 1);
                 }
             }
             
-            // ===== ZOMBIE MODE LOGIC =====
             if (zombieModeState.active) {
                 zombieModeState.waveTimer -= delta;
                 const playerPosition = duelState.localPlayer ? pointerLockControls.getObject().position : new THREE.Vector3();
@@ -3370,7 +3393,6 @@
         
         main();
 
-        // ===== PLAYER CONTROLLER REFACTORIZADO Y MEJORADO =====
         class PlayerController {
             constructor(isLocal, playerClass) {
                 this.isLocal = isLocal;
@@ -3386,11 +3408,10 @@
                 this.bobTime = 0;
                 this.recoil = new THREE.Vector3();
                 this.recoilTarget = new THREE.Vector3();
-                // Detección de estado inválido
                 this.fallTimer = 0;
                 this.stuckTimer = 0;
                 this.lastValidPosition = new THREE.Vector3(0, 20, 0);
-                this.timeSinceLastHit = 0; // Para regeneración de vida
+                this.timeSinceLastHit = 0;
                 this.lastHitTime = 0;
                 this.keys = {
                     KeyW: false, KeyA: false, KeyS: false, KeyD: false,
@@ -3402,7 +3423,7 @@
                     this.camera = camera;
                     this.weapon = this.createWeaponMesh(playerClass);
                     this.camera.add(this.weapon);
-                    this.mesh = new THREE.Group(); // Placeholder for local player
+                    this.mesh = new THREE.Group();
                     this.addLocalEventListeners();
                 }
             }
@@ -3429,10 +3450,10 @@
                 if (this.isRespawning) return;
                 this.health -= amount;
                 if (this.health < 0) this.health = 0;
-                this.timeSinceLastHit = 0; // Reset regen timer
+                this.timeSinceLastHit = 0;
 
                 const now = performance.now();
-                if (now - this.lastHitTime > 200) { // Cooldown for hit sound
+                if (now - this.lastHitTime > 200) {
                     this.lastHitTime = now;
                     if (isAudioReady && soundSources.player_hit) {
                         soundSources.player_hit.triggerAttackRelease("G1", "8n");
@@ -3570,8 +3591,7 @@
                         this.isRespawning = true; 
                         pauseTimer();
                     } else if (currentGameState.inMultiplayer) {
-                        // This logic is now handled by the host in syncDuelState upon detecting health <= 0
-                        this.respawn(); // Visually respawn immediately
+                        this.respawn();
                     }
                     return;
                 }
@@ -3586,7 +3606,7 @@
                 this.velocity.y -= 30.0 * delta;
 
                 this.direction.z = Number(this.keys.KeyW) - Number(this.keys.KeyS);
-                this.direction.x = Number(this.keys.KeyA) - Number(this.keys.KeyD);
+                this.direction.x = Number(this.keys.KeyD) - Number(this.keys.KeyA);
                 this.direction.normalize();
 
                 const forwardVector = new THREE.Vector3();
@@ -3595,8 +3615,8 @@
                 forwardVector.normalize();
                 const rightVector = new THREE.Vector3().crossVectors(cameraObject.up, forwardVector);
 
-                const moveX = -(this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * speed * delta;
-                const moveZ = -(this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * speed * delta;
+                const moveX = (this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * speed * delta;
+                const moveZ = (this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * speed * delta;
                 
                 cameraObject.position.x += moveX;
                 cameraObject.position.z += moveZ;
@@ -3630,6 +3650,7 @@
                         position: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
                         velocity: { x: direction.x * this.classStats.weapon.projectileSpeed, y: direction.y * this.classStats.weapon.projectileSpeed, z: direction.z * this.classStats.weapon.projectileSpeed },
                         range: this.classStats.weapon.range,
+                        spawnTime: Date.now()
                     };
                     spawnProjectile(projectileData, true);
                 }
@@ -3642,15 +3663,15 @@
                 this.recoilTarget.lerp(new THREE.Vector3(), delta * 10);
                 this.weapon.position.z = -0.6 - this.recoil.z;
 
-                // ========== CORRECCIÓN 3.A: SINCRONIZAR ROTACIÓN VERTICAL ==========
-                if (Date.now() - this.lastSyncTime >= 100 && currentGameState.inMultiplayer) {
+                // ========== CORRECCIÓN 3.A Y REDUCCIÓN DE ESCRITURAS ==========
+                if (Date.now() - this.lastSyncTime >= 200 && currentGameState.inMultiplayer) {
                     this.lastSyncTime = Date.now();
                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                     updateDoc(gameRef, {
                         [`duel.players.${userId}.position`]: { x: cameraObject.position.x, y: cameraObject.position.y, z: cameraObject.position.z },
                         [`duel.players.${userId}.rotationY`]: this.camera.rotation.y,
-                        [`duel.players.${userId}.rotationX`]: this.camera.rotation.x // NUEVO
-                    });
+                        [`duel.players.${userId}.rotationX`]: this.camera.rotation.x
+                    }).catch(e => console.warn("Firestore update failed, likely due to quota:", e.message));
                 }
             }
         }
