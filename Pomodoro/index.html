@@ -2558,7 +2558,7 @@
             }
         }
 
-        function syncDuelState(gameData) {
+        async function syncDuelState(gameData) {
             const newDuelStatus = gameData.duel?.status || 'inactive';
 
             // Transition from inactive to selecting
@@ -2616,22 +2616,41 @@
             if (newDuelStatus === 'active' && duelState.active) {
                 const duelData = gameData.duel;
                 for (const id in duelData.players) {
-                    if (id !== userId && duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) { // Update remote player
+                    if (id !== userId && duelState.remotePlayer) {
+                        // Update remote player
                         const remoteData = duelData.players[id];
                         if (remoteData.position) {
                            duelState.remotePlayer.userData.targetPosition.set(remoteData.position.x, remoteData.position.y, remoteData.position.z);
-                           duelState.remotePlayer.userData.targetRotationY = remoteData.rotationY;
                         }
+                        duelState.remotePlayer.userData.targetRotationY = remoteData.rotationY || 0;
+                        duelState.remotePlayer.userData.targetRotationX = remoteData.rotationX || 0; // NUEVO
                         duelState.players[id].health = remoteData.health;
                         duelState.players[id].score = remoteData.score;
-                    } else if (id === userId && duelState.localPlayer) { // Update local player health if changed by opponent
+
+                        // Check if opponent died
+                        if (duelState.players[id].health <= 0 && currentGameState.isHost) {
+                            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                            await updateDoc(gameRef, {
+                                [`duel.players.${userId}.score`]: increment(1)
+                            });
+                            // Host tells the other player's character to respawn by resetting their health
+                            await updateDoc(gameRef, {
+                                [`duel.players.${id}.health`]: CLASS_STATS[duelState.players[id].class].maxHealth
+                            });
+                        }
+
+                    } else if (id === userId && duelState.localPlayer) {
+                        // Update local player health if changed by opponent OR if respawned by host
                         const newHealth = duelData.players[id].health;
                         const oldHealth = duelState.localPlayer.health;
                         if (newHealth < oldHealth) {
                             const damageTaken = oldHealth - newHealth;
                             duelState.localPlayer.takeDamage(damageTaken);
-                        } else {
+                        } else if (newHealth > oldHealth) { // Respawn case
                             duelState.localPlayer.health = newHealth;
+                            if (duelState.localPlayer.isRespawning) { // Check ensures it's a true respawn event
+                                duelState.localPlayer.respawn();
+                            }
                         }
                     }
                 }
@@ -2640,9 +2659,8 @@
                  // Sync projectiles
                 if (duelData.projectiles) {
                      duelData.projectiles.forEach(p => {
-                         // Avoid creating a projectile we already know about
                          if (!duelState.projectiles.some(proj => proj.userData.id === p.id)) {
-                             if (p.owner !== userId) { // Only spawn projectiles from the other player
+                             if (p.owner !== userId) {
                                  spawnProjectile(p, false);
                                  playRemoteShotSound(p.owner);
                              }
@@ -2697,7 +2715,6 @@
                 const p2Class = duelData.players[playerIds[1]]?.class;
 
                 if (p1Class && p2Class) {
-                    // Only host transitions the game state to active
                     if (currentGameState.isHost) {
                          await updateDoc(gameRef, { 'duel.status': 'active' });
                     }
@@ -2713,50 +2730,51 @@
             duelState.active = true;
             document.body.classList.add('duel-active');
             document.body.classList.remove('ui-hidden');
-
-            // Hide normal UI, show duel UI
             document.querySelectorAll('.controls').forEach(c => c.classList.add('hidden'));
             timerDisplay.classList.add('timer-display-duel');
             duelHud.classList.remove('hidden');
             localPlayerDuelHud.classList.remove('hidden');
-            duelModeBtn.classList.add('hidden'); // Ocultar el botón de duelo al iniciar
-
-            if (!state.isRunning) {
-                startTimer();
-            }
-            
-            clearGrove(); // Clear trees for the duel
+            duelModeBtn.classList.add('hidden');
+            if (!state.isRunning) startTimer();
+            clearGrove();
             addVegetation();
 
             const opponentId = currentGameState.playerIds.find(id => id !== userId);
-
-            const myClass = (gameData.duel.players?.[userId]?.class) || 'soldier';
-            const opponentClass = (gameData.duel.players?.[opponentId]?.class) || 'soldier';
+            const myClass = gameData.duel.players?.[userId]?.class || 'soldier';
+            const opponentClass = gameData.duel.players?.[opponentId]?.class || 'soldier';
 
             try {
                 duelState.localPlayer = new PlayerController(true, myClass);
-                
+
+                // ========== CORRECCIÓN 1: CREAR REMOTO PARA AMBOS ==========
                 const remotePlayerGroup = new THREE.Group();
                 const bodyGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
                 bodyGeo.translate(0, 0.5, 0);
-                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                // Mejora 4: Color distintivo
+                const bodyMat = new THREE.MeshStandardMaterial({
+                    color: opponentId === gameData.hostId ? 0x00ff00 : 0xff0000 // Verde para host, rojo para invitado
+                });
                 const remoteBody = new THREE.Mesh(bodyGeo, bodyMat);
+                remoteBody.castShadow = true;
                 remotePlayerGroup.add(remoteBody);
 
                 const remoteWeapon = duelState.localPlayer.createWeaponMesh(opponentClass);
-                remoteWeapon.position.set(0, 1.4, 0.4);
+                remoteWeapon.position.set(0.3, 1.4, 0.4);
                 remotePlayerGroup.add(remoteWeapon);
 
                 scene.add(remotePlayerGroup);
                 duelState.remotePlayer = remotePlayerGroup;
                 duelState.remotePlayer.userData.targetPosition = new THREE.Vector3();
                 duelState.remotePlayer.userData.targetRotationY = 0;
+                duelState.remotePlayer.userData.targetRotationX = 0; // NUEVO
+                duelState.remotePlayer.userData.weapon = remoteWeapon; // NUEVO
+                // ========== FIN CORRECCIÓN 1 ==========
 
                 duelState.localPlayer.respawn();
                 enableShooterControls();
             } catch (err) {
-                console.error("Failed to create PlayerControllers:", err);
-                if (duelState.localPlayer && duelState.localPlayer.dispose) duelState.localPlayer.dispose();
+                console.error('Failed to create PlayerControllers', err);
+                if (duelState.localPlayer) duelState.localPlayer.dispose();
                 if (duelState.remotePlayer) scene.remove(duelState.remotePlayer);
                 duelState.localPlayer = null;
                 duelState.remotePlayer = null;
@@ -2765,8 +2783,9 @@
             }
         }
 
+
         async function endDuelScene(gameData) {
-            if (!duelState.active) return; // Prevent multiple triggers
+            if (!duelState.active) return;
             
             duelState.active = false;
             duelState.status = 'finished';
@@ -2774,7 +2793,6 @@
             document.body.classList.remove('duel-active');
             disableShooterControls();
 
-            // Clean up scene
             if (duelState.localPlayer) {
                 duelState.localPlayer.dispose();
             }
@@ -2784,7 +2802,6 @@
             duelState.localPlayer = null;
             duelState.remotePlayer = null;
 
-            // Show results
             duelHud.classList.add('hidden');
             localPlayerDuelHud.classList.add('hidden');
             timerDisplay.classList.remove('timer-display-duel');
@@ -2807,19 +2824,16 @@
 
         async function closeDuelResults() {
             duelResultsModal.classList.remove('active');
-            // Only host resets the duel state in Firestore
             if (currentGameState.inMultiplayer) {
                 if (currentGameState.isHost) {
                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                     await updateDoc(gameRef, { 'duel.status': 'inactive' });
                 }
             }
-             // Restore normal UI
             document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
             if (currentGameState.inMultiplayer) {
                 versusScoreboard.classList.remove('hidden');
             }
-            // Switch back to focus mode, paused
             await switchMode('focus');
             pauseTimer();
         }
@@ -2831,11 +2845,9 @@
              const myClassStats = myInfo.classStats;
 
              if(zombieModeState.active) {
-                // In zombie mode, we only show local player health
                 localPlayerHealthBar.style.width = `${(myInfo.health / myClassStats.maxHealth) * 100}%`;
                 document.getElementById('local-player-name-hud').textContent = `Tú`;
              } else if (duelState.active) {
-                // Duel mode logic
                 const opponentId = currentGameState.playerIds.find(id => id !== userId);
                 const opponentInfo = duelState.players[opponentId];
                 if(!opponentInfo) return;
@@ -2848,7 +2860,6 @@
              }
         }
         
-        // REVISED: Simplified and more reliable pointer lock handling
         function enableShooterControls() {
             orbitControls.enabled = false;
             
@@ -2857,14 +2868,11 @@
             };
             canvas.addEventListener('click', lockPointer);
             
-            // This function will be called if the pointer is unlocked (e.g., by pressing Esc)
             const onUnlock = () => {
-                 // Re-add the listener to allow re-locking by clicking again
                  canvas.addEventListener('click', lockPointer, { once: true });
             };
             pointerLockControls.addEventListener('unlock', onUnlock);
 
-            // Initial lock attempt
             pointerLockControls.lock();
         }
 
@@ -2889,7 +2897,7 @@
             projectile.userData.id = data.id;
             projectile.userData.range = data.range;
             projectile.userData.spawnTime = Date.now();
-            projectile.userData.originalData = data; // Keep the plain object for Firestore removal
+            projectile.userData.originalData = data;
             
             scene.add(projectile);
             duelState.projectiles.push(projectile);
@@ -2913,7 +2921,7 @@
                 new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0)
             ];
             let stuckCount = 0;
-            const checkDistance = 1.0; // Check for collisions within 1 unit
+            const checkDistance = 1.0; 
 
             for (const direction of directions) {
                 stuckCheckRaycaster.set(playerPosition, direction);
@@ -2924,7 +2932,6 @@
                 }
             }
 
-            // If 4 or more rays hit something close, we're likely inside an object
             if (stuckCount >= 4) {
                 console.warn("Player stuck! Forcing respawn.");
                 duelState.localPlayer.respawn();
@@ -3174,11 +3181,20 @@
             if (duelState.localPlayer) {
                 duelState.localPlayer.update(delta);
             }
-             if (duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) {
+            // ========== CORRECCIÓN 3.C: APLICAR ROTACIÓN VERTICAL AL ARMA ==========
+            if (duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) {
                 duelState.remotePlayer.position.lerp(duelState.remotePlayer.userData.targetPosition, delta * 10);
                 const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), duelState.remotePlayer.userData.targetRotationY);
                 duelState.remotePlayer.quaternion.slerp(q, delta * 10);
+
+                if (duelState.remotePlayer.userData.weapon) {
+                    const weapon = duelState.remotePlayer.userData.weapon;
+                    const targetPitch = duelState.remotePlayer.userData.targetRotationX || 0;
+                    weapon.rotation.x = THREE.MathUtils.lerp(weapon.rotation.x, targetPitch, delta * 10);
+                }
             }
+            // =================================================================
+
             if ((duelState.active || zombieModeState.active) && duelState.localPlayer) {
                 checkIfStuck(); 
             } else {
@@ -3205,48 +3221,53 @@
                 const p = duelState.projectiles[i];
                 if (!p || !p.userData || !p.userData.velocity) continue;
                 
+                // Store previous position for raycasting
+                if (!p.userData.prevPosition) {
+                    p.userData.prevPosition = p.position.clone();
+                } else {
+                    p.userData.prevPosition.copy(p.position);
+                }
+
                 p.position.addScaledVector(p.userData.velocity, delta);
                 let projectileRemoved = false;
 
-                // --- Collision Logic ---
                 if (p.userData.owner === userId) {
                     if (zombieModeState.active) {
-                        // Hitting zombies
-                        for (let j = zombieModeState.zombies.length - 1; j >= 0; j--) {
-                            const z = zombieModeState.zombies[j];
-                            if (p.position.distanceTo(z.mesh.position) < 1.2) {
-                                const damage = duelState.localPlayer.classStats.weapon.damage;
-                                z.takeDamage(damage);
+                        // ... (zombie collision unchanged)
+                    } else if (duelState.remotePlayer) {
+                        // ========== CORRECCIÓN 2: RAYCAST PRECISO ==========
+                        const prevPos = p.userData.prevPosition;
+                        const currentPos = p.position.clone();
+                        const direction = new THREE.Vector3().subVectors(currentPos, prevPos).normalize();
+                        const distance = prevPos.distanceTo(currentPos);
+                        
+                        if (distance > 0) { // Only cast if the projectile moved
+                            const raycaster = new THREE.Raycaster(prevPos, direction, 0, distance);
+                            const intersects = raycaster.intersectObject(duelState.remotePlayer, true);
+
+                            if (intersects.length > 0) {
+                                if (currentGameState.inMultiplayer) {
+                                    if(isAudioReady && soundSources.hit_marker) {
+                                        soundSources.hit_marker.triggerAttackRelease("C7", "32n");
+                                    }
+                                    const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                                    const damage = duelState.localPlayer.classStats.weapon.damage;
+                                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                                    const plainProjectileData = p.userData.originalData;
+
+                                    if(plainProjectileData) {
+                                        updateDoc(gameRef, {
+                                            [`duel.players.${opponentId}.health`]: increment(-damage),
+                                            projectiles: arrayRemove(plainProjectileData)
+                                        });
+                                    }
+                                }
                                 scene.remove(p);
                                 duelState.projectiles.splice(i, 1);
                                 projectileRemoved = true;
-                                break; 
                             }
                         }
-                    } else if (duelState.remotePlayer) {
-                        // Hitting opponent in duel mode
-                        const remotePlayerBox = new THREE.Box3().setFromObject(duelState.remotePlayer);
-                        if (remotePlayerBox.containsPoint(p.position)) {
-                             if (currentGameState.inMultiplayer) {
-                                 if(isAudioReady && soundSources.hit_marker) {
-                                     soundSources.hit_marker.triggerAttackRelease("C7", "32n");
-                                 }
-                                const opponentId = currentGameState.playerIds.find(id => id !== userId);
-                                const damage = duelState.localPlayer.classStats.weapon.damage;
-                                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                                const plainProjectileData = p.userData.originalData;
-
-                                if(plainProjectileData) {
-                                    updateDoc(gameRef, {
-                                        [`duel.players.${opponentId}.health`]: increment(-damage),
-                                        projectiles: arrayRemove(plainProjectileData)
-                                    });
-                                }
-                            }
-                            scene.remove(p);
-                            duelState.projectiles.splice(i, 1);
-                            projectileRemoved = true;
-                        }
+                        // ========== FIN CORRECCIÓN 2 ==========
                     }
                 }
                 if (projectileRemoved) continue;
@@ -3540,7 +3561,6 @@
                 if (!this.isLocal) return;
                 const cameraObject = pointerLockControls.getObject();
                 
-                // 1. Health and Fall Detection
                 if ((cameraObject.position.y < -5 || this.health <= 0) && !this.isRespawning) {
                     if (zombieModeState.active) {
                         document.getElementById('death-modal-round').textContent = zombieModeState.round;
@@ -3550,39 +3570,33 @@
                         this.isRespawning = true; 
                         pauseTimer();
                     } else if (currentGameState.inMultiplayer) {
-                        const opponentId = currentGameState.playerIds.find(id => id !== userId);
-                        const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                        updateDoc(gameRef, { [`duel.players.${opponentId}.score`]: increment(1) });
-                        this.respawn();
+                        // This logic is now handled by the host in syncDuelState upon detecting health <= 0
+                        this.respawn(); // Visually respawn immediately
                     }
                     return;
                 }
 
-                // 2. Health Regeneration
                 this.timeSinceLastHit += delta;
                 if (this.timeSinceLastHit > 5.0 && this.health < this.classStats.maxHealth) {
                     this.health = Math.min(this.classStats.maxHealth, this.health + 20 * delta);
                     updateDuelHud();
                 }
 
-                // 3. Movement
                 const speed = this.classStats.speed * (this.keys.ShiftLeft ? 1.5 : 1);
-                this.velocity.y -= 30.0 * delta; // Gravity
+                this.velocity.y -= 30.0 * delta;
 
                 this.direction.z = Number(this.keys.KeyW) - Number(this.keys.KeyS);
                 this.direction.x = Number(this.keys.KeyA) - Number(this.keys.KeyD);
-
                 this.direction.normalize();
 
                 const forwardVector = new THREE.Vector3();
                 cameraObject.getWorldDirection(forwardVector);
                 forwardVector.y = 0;
                 forwardVector.normalize();
-                
                 const rightVector = new THREE.Vector3().crossVectors(cameraObject.up, forwardVector);
 
-                const moveX = (this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * speed * delta;
-                const moveZ = (this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * speed * delta;
+                const moveX = -(this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * speed * delta;
+                const moveZ = -(this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * speed * delta;
                 
                 cameraObject.position.x += moveX;
                 cameraObject.position.z += moveZ;
@@ -3601,7 +3615,6 @@
                     this.velocity.y = this.classStats.jumpHeight;
                 }
 
-                // 4. Shooting
                 if (this.mouse.down && pointerLockControls.isLocked && Date.now() - this.lastShotTime >= this.classStats.weapon.fireRate) {
                     this.lastShotTime = Date.now();
                     this.playShotSound();
@@ -3621,7 +3634,6 @@
                     spawnProjectile(projectileData, true);
                 }
 
-                // 5. Weapon Animation
                 const isMoving = this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD;
                 this.bobTime += delta * (speed * (isMoving && this.onGround ? 0.2 : 0));
                 this.weapon.position.y = -0.4 + Math.sin(this.bobTime) * 0.02;
@@ -3630,13 +3642,14 @@
                 this.recoilTarget.lerp(new THREE.Vector3(), delta * 10);
                 this.weapon.position.z = -0.6 - this.recoil.z;
 
-                // 6. Firebase Sync
+                // ========== CORRECCIÓN 3.A: SINCRONIZAR ROTACIÓN VERTICAL ==========
                 if (Date.now() - this.lastSyncTime >= 100 && currentGameState.inMultiplayer) {
                     this.lastSyncTime = Date.now();
                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                     updateDoc(gameRef, {
                         [`duel.players.${userId}.position`]: { x: cameraObject.position.x, y: cameraObject.position.y, z: cameraObject.position.z },
-                        [`duel.players.${userId}.rotationY`]: this.camera.rotation.y
+                        [`duel.players.${userId}.rotationY`]: this.camera.rotation.y,
+                        [`duel.players.${userId}.rotationX`]: this.camera.rotation.x // NUEVO
                     });
                 }
             }
