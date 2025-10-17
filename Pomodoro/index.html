@@ -261,7 +261,7 @@
             padding: 30px;
             border-radius: 16px;
             width: 90%;
-            max-width: 500px;
+            max-width: 550px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transform: scale(0.95);
@@ -379,9 +379,57 @@
         }
         
         #ai-tutor-loading .spinner {
-            border-color: rgba(255,255,255,0.2);
+            border: 4px solid rgba(255,255,255,0.2);
             border-top-color: var(--primary-color);
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            animation: spin 1s linear infinite;
         }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #ai-history-container {
+            margin-bottom: 1rem;
+            max-height: 8rem; /* 128px */
+            overflow-y: auto;
+            padding: 0.5rem;
+            border-radius: 0.5rem; /* 8px */
+            background-color: rgba(0,0,0,0.2);
+        }
+
+        #ai-history-list li {
+            font-size: 0.875rem; /* 14px */
+            padding: 0.5rem;
+            border-radius: 0.375rem; /* 6px */
+            cursor: pointer;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #ai-history-list li:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        #ai-tutor-result-container {
+            margin-top: 1rem;
+            height: 15rem; /* 240px */
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #ai-tutor-output {
+            line-height: 1.4;
+            font-size: 0.875rem;
+        }
+
 
         #language-btn {
             width: 2.5rem;
@@ -754,16 +802,16 @@
         </div>
 
         <div id="top-right-controls" class="controls">
-            <button id="ai-tutor-btn" class="control-button font-bold text-lg" title="Tutor IA">AI</button>
+            <button id="ai-tutor-btn" class="control-button" title="Tutor IA" style="font-weight: bold; font-size: 1.125rem;">AI</button>
             
             <div class="relative">
                 <button id="language-btn" title="Cambiar Idioma"></button>
                 <div id="language-dropdown" class="dropdown-menu hidden">
-                    <button data-lang="es" class="menu-option"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/es.png');"></span><span class="flex-1">Español</span></button>
-                    <button data-lang="en" class="menu-option"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/us.png');"></span><span class="flex-1">English</span></button>
-                    <button data-lang="fr" class="menu-option"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/fr.png');"></span><span class="flex-1">Français</span></button>
-                    <button data-lang="zh" class="menu-option"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/cn.png');"></span><span class="flex-1">中文</span></button>
-                    <button data-lang="hi" class="menu-option"><span class="w-6 h-4 bg-cover bg-center rounded-sm" style="background-image: url('https://flagcdn.com/w40/in.png');"></span><span class="flex-1">हिन्दी</span></button>
+                    <button data-lang="es" class="menu-option"><span style="width: 1.5rem; height: 1rem; background-size: cover; background-position: center; border-radius: 0.125rem; background-image: url('https://flagcdn.com/w40/es.png');"></span><span style="flex: 1 1 0%;">Español</span></button>
+                    <button data-lang="en" class="menu-option"><span style="width: 1.5rem; height: 1rem; background-size: cover; background-position: center; border-radius: 0.125rem; background-image: url('https://flagcdn.com/w40/us.png');"></span><span style="flex: 1 1 0%;">English</span></button>
+                    <button data-lang="fr" class="menu-option"><span style="width: 1.5rem; height: 1rem; background-size: cover; background-position: center; border-radius: 0.125rem; background-image: url('https://flagcdn.com/w40/fr.png');"></span><span style="flex: 1 1 0%;">Français</span></button>
+                    <button data-lang="zh" class="menu-option"><span style="width: 1.5rem; height: 1rem; background-size: cover; background-position: center; border-radius: 0.125rem; background-image: url('https://flagcdn.com/w40/cn.png');"></span><span style="flex: 1 1 0%;">中文</span></button>
+                    <button data-lang="hi" class="menu-option"><span style="width: 1.5rem; height: 1rem; background-size: cover; background-position: center; border-radius: 0.125rem; background-image: url('https://flagcdn.com/w40/in.png');"></span><span style="flex: 1 1 0%;">हिन्दी</span></button>
                 </div>
             </div>
 
@@ -883,22 +931,45 @@
         </div>
     </div>
 
-    <!-- AI Modal -->
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close-btn" data-target="api-key-modal">&times;</button>
+            <h3 data-translate-key="apiKeyTitle">Clave API de Gemini</h3>
+            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 15px;" data-translate-key="apiKeyDescription">Para usar el Tutor IA, necesitas una clave API de Google AI Studio.</p>
+            <div class="form-group">
+                <label for="api-key-input" data-translate-key="apiKeyLabel">Tu Clave API</label>
+                <input type="text" id="api-key-input" placeholder="Pega tu clave aquí...">
+            </div>
+            <button id="save-api-key-btn" class="modal-button" data-translate-key="apiKeySave">Guardar y Continuar</button>
+        </div>
+    </div>
+
+
+    <!-- AI Modal (Restored) -->
     <div id="ai-tutor-modal" class="modal">
          <div class="modal-content">
             <button class="modal-close-btn" data-target="ai-tutor-modal">&times;</button>
-            <h3 class="text-lg font-bold mb-4" data-translate-key="aiTutorTitle">✨ Tutor IA</h3>
-            <p class="text-sm text-secondary mb-4" data-translate-key="aiTutorDescription">¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.</p>
-            <textarea id="ai-tutor-prompt-input" rows="4" class="w-full p-2 rounded-md bg-primary-light border border-custom text-sm mb-4" placeholder="Ej: ¿Por qué el cielo es azul?" data-translate-key="aiTutorPlaceholder"></textarea>
-            <button id="ai-tutor-generate-btn" class="w-full font-bold py-2 px-4 rounded-lg text-white transition-transform transform hover:scale-105" style="background-color: var(--primary-color);">
+            <h3 style="font-size: 1.125rem; font-weight: bold; margin-bottom: 1rem;" data-translate-key="aiTutorTitle">✨ Tutor IA</h3>
+            <p style="font-size: 0.875rem; color: #aaa; margin-bottom: 1rem;" data-translate-key="aiTutorDescription">¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.</p>
+            
+            <h4 style="font-size: 0.875rem; font-weight: bold; color: #ccc; margin-bottom: 0.5rem;" data-translate-key="aiHistoryTitle">Historial</h4>
+            <div id="ai-history-container">
+                <ul id="ai-history-list">
+                    <!-- History items will be populated by JS -->
+                </ul>
+            </div>
+
+            <textarea id="ai-tutor-prompt-input" rows="3" placeholder="Ej: ¿Por qué el cielo es azul?" data-translate-key="aiTutorPlaceholder"></textarea>
+            <button id="ai-tutor-generate-btn" class="modal-button">
                 <span data-translate-key="aiTutorGenerateBtn">Explicar Concepto</span>
             </button>
-            <div id="ai-tutor-result-container" class="mt-4 max-h-48 overflow-y-auto">
-                <div id="ai-tutor-loading" class="hidden flex-col items-center justify-center text-center">
-                     <div class="spinner w-8 h-8 border-4 rounded-full animate-spin"></div>
-                    <p class="text-sm text-secondary" data-translate-key="aiTutorLoading">Pensando...</p>
+            <div id="ai-tutor-result-container">
+                <div id="ai-tutor-loading" class="hidden" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                     <div class="spinner"></div>
+                    <p style="font-size: 0.875rem; color: #aaa;" data-translate-key="aiTutorLoading">Pensando...</p>
                 </div>
-                <div id="ai-tutor-output" class="text-left text-sm space-y-2"></div>
+                <div id="ai-tutor-output" style="white-space: normal;"></div>
             </div>
         </div>
     </div>
@@ -952,57 +1023,57 @@
     <!-- Class Selection Modal -->
     <div id="class-selection-modal" class="modal">
         <div class="modal-content">
-            <h2>Selecciona tu Clase</h2>
-            <p style="text-align:center; margin-bottom: 2rem; color: #aaa;">Elige tu estilo de combate.</p>
+            <h2 data-translate-key="selectYourClass">Selecciona tu Clase</h2>
+            <p style="text-align:center; margin-bottom: 2rem; color: #aaa;" data-translate-key="chooseYourStyle">Elige tu estilo de combate.</p>
             <div id="class-selection-container">
                 <div class="class-card" data-class="scout">
-                    <h3>🏃‍♂️ Explorador</h3>
-                    <p><strong>Vida:</strong> 75</p>
-                    <p><strong>Velocidad:</strong> Muy Rápida</p>
-                    <p><strong>Arma:</strong> Pistola (Daño bajo, cadencia alta)</p>
+                    <h3 data-translate-key="classScout">🏃‍♂️ Explorador</h3>
+                    <p><strong data-translate-key="statHealth">Vida:</strong> 75</p>
+                    <p><strong data-translate-key="statSpeed">Velocidad:</strong> <span data-translate-key="statSpeedFast">Muy Rápida</span></p>
+                    <p><strong data-translate-key="statWeapon">Arma:</strong> <span data-translate-key="weaponPistol">Pistola (Daño bajo, cadencia alta)</span></p>
                 </div>
                 <div class="class-card" data-class="soldier">
-                    <h3>⚔️ Soldado</h3>
-                    <p><strong>Vida:</strong> 100</p>
-                    <p><strong>Velocidad:</strong> Normal</p>
-                    <p><strong>Arma:</strong> Rifle (Daño medio, cadencia media)</p>
+                    <h3 data-translate-key="classSoldier">⚔️ Soldado</h3>
+                    <p><strong data-translate-key="statHealth">Vida:</strong> 100</p>
+                    <p><strong data-translate-key="statSpeed">Velocidad:</strong> <span data-translate-key="statSpeedNormal">Normal</span></p>
+                    <p><strong data-translate-key="statWeapon">Arma:</strong> <span data-translate-key="weaponRifle">Rifle (Daño medio, cadencia media)</span></p>
                 </div>
                 <div class="class-card" data-class="tank">
-                    <h3>🛡️ Tanque</h3>
-                    <p><strong>Vida:</strong> 150</p>
-                    <p><strong>Velocidad:</strong> Lenta</p>
-                    <p><strong>Arma:</strong> Escopeta (Daño alto, cadencia baja)</p>
+                    <h3 data-translate-key="classTank">🛡️ Tanque</h3>
+                    <p><strong data-translate-key="statHealth">Vida:</strong> 150</p>
+                    <p><strong data-translate-key="statSpeed">Velocidad:</strong> <span data-translate-key="statSpeedSlow">Lenta</span></p>
+                    <p><strong data-translate-key="statWeapon">Arma:</strong> <span data-translate-key="weaponShotgun">Escopeta (Daño alto, cadencia baja)</span></p>
                 </div>
             </div>
-             <p id="waiting-for-opponent-class" class="hidden" style="text-align:center; margin-top: 1.5rem;">Esperando al oponente...</p>
+             <p id="waiting-for-opponent-class" class="hidden" style="text-align:center; margin-top: 1.5rem;" data-translate-key="waitingForOpponent">Esperando al oponente...</p>
         </div>
     </div>
     
     <!-- Duel Results Modal -->
     <div id="duel-results-modal" class="modal">
         <div class="modal-content">
-            <h2 id="duel-winner-text">¡Duelo Terminado!</h2>
+            <h2 id="duel-winner-text" data-translate-key="duelFinished">¡Duelo Terminado!</h2>
             <p id="final-duel-score" style="font-size: 1.5rem; margin-bottom: 1rem;">0 - 0</p>
-            <button id="close-duel-results-btn" class="modal-button">Continuar</button>
+            <button id="close-duel-results-btn" class="modal-button" data-translate-key="continue">Continuar</button>
         </div>
     </div>
 
     <!-- ZOMBIE DEATH MODAL -->
     <div id="zombie-death-modal" class="modal">
         <div class="modal-content" style="text-align: center;">
-            <h2>¡Has muerto!</h2>
-            <p style="margin-bottom: 1rem;">Has sobrevivido hasta la <span id="death-modal-round">1</span> con <span id="death-modal-kills">0</span> bajas.</p>
-            <button id="zombie-respawn-btn" class="modal-button">Reintentar desde el principio</button>
-            <button id="zombie-exit-btn" class="modal-button secondary">Salir del modo</button>
+            <h2 data-translate-key="youDied">¡Has muerto!</h2>
+            <p id="death-modal-text" style="margin-bottom: 1rem;">Has sobrevivido hasta la ronda 1 con 0 bajas.</p>
+            <button id="zombie-respawn-btn" class="modal-button" data-translate-key="retry">Reintentar desde el principio</button>
+            <button id="zombie-exit-btn" class="modal-button secondary" data-translate-key="exitMode">Salir del modo</button>
         </div>
     </div>
 
     <!-- ZOMBIE RESULTS MODAL -->
     <div id="zombie-results-modal" class="modal">
         <div class="modal-content" style="text-align: center;">
-            <h2>¡Tiempo agotado!</h2>
-            <p style="font-size: 1.2rem; margin-bottom: 1rem;">Has llegado a la <strong id="results-modal-round">1</strong> con <strong id="results-modal-kills">0</strong> bajas.</p>
-            <button id="close-zombie-results-btn" class="modal-button">Continuar</button>
+            <h2 data-translate-key="timeUp">¡Tiempo agotado!</h2>
+            <p id="results-modal-text" style="font-size: 1.2rem; margin-bottom: 1rem;">Has llegado a la ronda 1 con 0 bajas.</p>
+            <button id="close-zombie-results-btn" class="modal-button" data-translate-key="continue">Continuar</button>
         </div>
     </div>
 
@@ -1050,13 +1121,18 @@
         const shortBreakDurationInput = document.getElementById('short-break-duration');
         const longBreakDurationInput = document.getElementById('long-break-duration');
         
-        // AI Tutor
+        // AI Tutor (Restored)
         const aiTutorModal = document.getElementById('ai-tutor-modal');
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+        const apiKeyInput = document.getElementById('api-key-input');
         const aiTutorBtn = document.getElementById('ai-tutor-btn');
         const aiTutorGenerateBtn = document.getElementById('ai-tutor-generate-btn');
         const aiTutorPromptInput = document.getElementById('ai-tutor-prompt-input');
         const aiTutorLoading = document.getElementById('ai-tutor-loading');
         const aiTutorOutput = document.getElementById('ai-tutor-output');
+        const aiHistoryList = document.getElementById('ai-history-list');
+
 
         // Language
         const languageBtn = document.getElementById('language-btn');
@@ -1132,7 +1208,6 @@
             playerCount: 1,
             playerIds: [],
         };
-        let lastProjectileCleanup = 0; // For Firestore cleanup
 
         // --- SINGLE PLAYER DUEL TEST ---
         let singlePlayerDuelEnabled = true;
@@ -1176,7 +1251,7 @@
             } else {
                  scene = new THREE.Scene();
             }
-            
+           
             noise = new SimplexNoise(mapSeed);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -1314,12 +1389,30 @@
             timeScale: 1,
             currentLang: 'es'
         };
+
+        let aiHistory = [];
+        let geminiApiKey = null;
         
         function updateDurations() {
             state.workDuration = parseInt(workDurationInput.value) * 60;
             state.shortBreakDuration = parseInt(shortBreakDurationInput.value) * 60;
             state.longBreakDuration = parseInt(longBreakDurationInput.value) * 60;
-            resetTimer();
+            
+            // Only update the current timer if it's not running
+            if (!state.isRunning) {
+                switch (state.mode) {
+                    case 'focus':
+                        state.currentTime = state.workDuration;
+                        break;
+                    case 'shortBreak':
+                        state.currentTime = state.shortBreakDuration;
+                        break;
+                    case 'longBreak':
+                        state.currentTime = state.longBreakDuration;
+                        break;
+                }
+                updateTimerDisplay();
+            }
         }
         
         function formatTime(seconds) {
@@ -1462,7 +1555,7 @@
         function getHeightAt(x, y) {
             const floorSize = 200;
             if (Math.abs(x) > floorSize / 2 || Math.abs(y) > floorSize / 2) {
-                return 10; // Default height outside map boundaries
+                return 10;
             }
             const detailScale = 0.1;
             const peakHeight = 20;
@@ -1644,7 +1737,7 @@
         
         async function growATree({ isSpecial = false, taskId = null, isPomodoroCompletion = false } = {}) {
             
-            const spawnRange = 190; // The floor size is 200, leave a small margin
+            const spawnRange = 190;
             const x = (Math.random() - 0.5) * spawnRange;
             const z = (Math.random() - 0.5) * spawnRange;
             const y = getHeightAt(x,-z);
@@ -1864,138 +1957,308 @@
         let tasks = [];
         const translations = {
              es: {
-                 aiTutorTitle: "✨ Tutor IA",
-                 aiTutorDescription: "¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.",
-                 aiTutorPlaceholder: "Ej: ¿Por qué el cielo es azul?",
-                 aiTutorGenerateBtn: "Explicar Concepto",
-                 aiTutorLoading: "Pensando...",
-                 todoTitle: "Lista de Tareas",
-                 todoPlaceholder: "Añadir nueva tarea...",
-                 settingsTitle: "Configuración",
-                 focusLabel: "Enfoque",
-                 shortBreakLabel: "Descanso Corto",
-                 longBreakLabel: "Descanso Largo",
-                 multiplayer: "Multijugador",
-                 biome: "Bioma",
-                 music: "Música",
-                 language: "Idioma",
-                 fullscreen: "Pantalla Completa",
-                 createGame: "Crear Partida",
-                 joinGame: "Unirse a Partida",
-                 selectMode: "Seleccionar Modo",
-                 cooperativeMode: "Cooperativo",
-                 versusMode: "Lucha",
-                 back: "Volver",
-                 waitingForPlayer: "Esperando jugador...",
-                 shareCode: "Comparte este código con un amigo:",
-                 copied: "¡Copiado!",
-                 enterCode: "Introduce el código de la partida",
-                 join: "Unirse",
-                 host: "Anfitrión",
-                 guest: "Invitado",
-                 saveLoadGame: "Guardar/Cargar Partida",
-                 saveLoadDesc: "Exporta el estado de tu partida multijugador para continuarla más tarde.",
-                 exportGame: "Exportar Partida",
-                 importGame: "Importar Partida (Anfitrión)",
-                 zombieRound: "Ronda:",
-                 zombieKills: "Bajas:"
+                aiTutorTitle: "✨ Tutor IA",
+                aiTutorDescription: "¿Atascado en un problema? Descríbelo y la IA te dará una explicación simple.",
+                aiTutorPlaceholder: "Ej: ¿Por qué el cielo es azul?",
+                aiTutorGenerateBtn: "Explicar Concepto",
+                aiTutorLoading: "Pensando...",
+                tutorPrompt: "Eres un tutor amigable y experto. Tu objetivo es explicar conceptos difíciles de una manera muy simple y fácil de entender. Usa analogías y un lenguaje claro. Responde siempre en español.",
+                aiHistoryTitle: "Historial",
+                aiHistoryEmpty: "No hay preguntas recientes.",
+                apiKeyTitle: "Clave API de Gemini",
+                apiKeyDescription: "Para usar el Tutor IA, necesitas una clave API de Google AI Studio.",
+                apiKeyLabel: "Tu Clave API",
+                apiKeySave: "Guardar y Continuar",
+                apiKeyInvalid: "La clave API no es válida. Por favor, inténtalo de nuevo.",
+                todoTitle: "Lista de Tareas",
+                todoPlaceholder: "Añadir nueva tarea...",
+                settingsTitle: "Configuración",
+                focusLabel: "Enfoque",
+                shortBreakLabel: "Descanso Corto",
+                longBreakLabel: "Descanso Largo",
+                multiplayer: "Multijugador",
+                biome: "Bioma",
+                music: "Música",
+                language: "Idioma",
+                fullscreen: "Pantalla Completa",
+                createGame: "Crear Partida",
+                joinGame: "Unirse a Partida",
+                selectMode: "Seleccionar Modo",
+                cooperativeMode: "Cooperativo",
+                versusMode: "Lucha",
+                back: "Volver",
+                waitingForPlayer: "Esperando jugador...",
+                shareCode: "Comparte este código con un amigo:",
+                copied: "¡Copiado!",
+                enterCode: "Introduce el código de la partida",
+                join: "Unirse",
+                host: "Anfitrión",
+                guest: "Invitado",
+                saveLoadGame: "Guardar/Cargar Partida",
+                saveLoadDesc: "Exporta el estado de tu partida multijugador para continuarla más tarde.",
+                exportGame: "Exportar Partida",
+                importGame: "Importar Partida (Anfitrión)",
+                zombieRound: "Ronda:",
+                zombieKills: "Bajas:",
+                selectYourClass: "Selecciona tu Clase",
+                chooseYourStyle: "Elige tu estilo de combate.",
+                classScout: "Explorador",
+                classSoldier: "Soldado",
+                classTank: "Tanque",
+                statHealth: "Vida",
+                statSpeed: "Velocidad",
+                statSpeedFast: "Muy Rápida",
+                statSpeedNormal: "Normal",
+                statSpeedSlow: "Lenta",
+                statWeapon: "Arma",
+                weaponPistol: "Pistola (Daño bajo, cadencia alta)",
+                weaponRifle: "Rifle (Daño medio, cadencia media)",
+                weaponShotgun: "Escopeta (Daño alto, cadencia baja)",
+                waitingForOpponent: "Esperando al oponente...",
+                duelFinished: "¡Duelo Terminado!",
+                youWon: "¡Has ganado!",
+                youLost: "Has perdido...",
+                itsADraw: "¡Es un empate!",
+                continue: "Continuar",
+                youDied: "¡Has muerto!",
+                youSurvivedToRound: "Has sobrevivido hasta la ronda {round} con {kills} bajas.",
+                retry: "Reintentar",
+                exitMode: "Salir del modo",
+                timeUp: "¡Tiempo agotado!",
+                youReachedRound: "Has llegado a la ronda {round} con {kills} bajas."
              },
              en: {
-                 aiTutorTitle: "✨ AI Tutor",
-                 aiTutorDescription: "Stuck on a problem? Describe it and the AI will give you a simple explanation.",
-                 aiTutorPlaceholder: "E.g., Why is the sky blue?",
-                 aiTutorGenerateBtn: "Explain Concept",
-                 aiTutorLoading: "Thinking...",
-                 todoTitle: "To-Do List",
-                 todoPlaceholder: "Add a new task...",
-                 settingsTitle: "Settings",
-                 focusLabel: "Focus",
-                 shortBreakLabel: "Short Break",
-                 longBreakLabel: "Long Break",
-                 multiplayer: "Multiplayer",
-                 biome: "Biome",
-                 music: "Music",
-                 language: "Language",
-                 fullscreen: "Fullscreen",
-                 createGame: "Create Game",
-                 joinGame: "Join Game",
-                 selectMode: "Select Mode",
-                 cooperativeMode: "Cooperative",
-                 versusMode: "Versus",
-                 back: "Back",
-                 waitingForPlayer: "Waiting for player...",
-                 shareCode: "Share this code with a friend:",
-                 copied: "Copied!",
-                 enterCode: "Enter the game code",
-                 join: "Join",
-                 host: "Host",
-                 guest: "Guest",
-                 saveLoadGame: "Save/Load Game",
-                 saveLoadDesc: "Export your multiplayer game state to continue it later.",
-                 exportGame: "Export Game",
-                 importGame: "Import Game (Host)",
-                 zombieRound: "Round:",
-                 zombieKills: "Kills:"
+                aiTutorTitle: "✨ AI Tutor",
+                aiTutorDescription: "Stuck on a problem? Describe it and the AI will give you a simple explanation.",
+                aiTutorPlaceholder: "E.g., Why is the sky blue?",
+                aiTutorGenerateBtn: "Explain Concept",
+                aiTutorLoading: "Thinking...",
+                tutorPrompt: "You are a friendly and expert tutor. Your goal is to explain difficult concepts in a very simple and easy-to-understand way. Use analogies and clear language. Always respond in English.",
+                aiHistoryTitle: "History",
+                aiHistoryEmpty: "No recent questions.",
+                apiKeyTitle: "Gemini API Key",
+                apiKeyDescription: "To use the AI Tutor, you need an API key from Google AI Studio.",
+                apiKeyLabel: "Your API Key",
+                apiKeySave: "Save and Continue",
+                apiKeyInvalid: "The API Key is invalid. Please try again.",
+                todoTitle: "To-Do List",
+                todoPlaceholder: "Add a new task...",
+                settingsTitle: "Settings",
+                focusLabel: "Focus",
+                shortBreakLabel: "Short Break",
+                longBreakLabel: "Long Break",
+                multiplayer: "Multiplayer",
+                biome: "Biome",
+                music: "Music",
+                language: "Language",
+                fullscreen: "Fullscreen",
+                createGame: "Create Game",
+                joinGame: "Join Game",
+                selectMode: "Select Mode",
+                cooperativeMode: "Cooperative",
+                versusMode: "Versus",
+                back: "Back",
+                waitingForPlayer: "Waiting for player...",
+                shareCode: "Share this code with a friend:",
+                copied: "Copied!",
+                enterCode: "Enter the game code",
+                join: "Join",
+                host: "Host",
+                guest: "Guest",
+                saveLoadGame: "Save/Load Game",
+                saveLoadDesc: "Export your multiplayer game state to continue it later.",
+                exportGame: "Export Game",
+                importGame: "Import Game (Host)",
+                zombieRound: "Round:",
+                zombieKills: "Kills:",
+                selectYourClass: "Select Your Class",
+                chooseYourStyle: "Choose your combat style.",
+                classScout: "Scout",
+                classSoldier: "Soldier",
+                classTank: "Tank",
+                statHealth: "Health",
+                statSpeed: "Speed",
+                statSpeedFast: "Very Fast",
+                statSpeedNormal: "Normal",
+                statSpeedSlow: "Slow",
+                statWeapon: "Weapon",
+                weaponPistol: "Pistol (Low damage, high fire rate)",
+                weaponRifle: "Rifle (Medium damage, medium fire rate)",
+                weaponShotgun: "Shotgun (High damage, low fire rate)",
+                waitingForOpponent: "Waiting for opponent...",
+                duelFinished: "Duel Finished!",
+                youWon: "You Won!",
+                youLost: "You Lost...",
+                itsADraw: "It's a Draw!",
+                continue: "Continue",
+                youDied: "You Died!",
+                youSurvivedToRound: "You survived until round {round} with {kills} kills.",
+                retry: "Retry",
+                exitMode: "Exit Mode",
+                timeUp: "Time's Up!",
+                youReachedRound: "You reached round {round} with {kills} kills."
              },
-             fr: { // (Añadir más traducciones si es necesario)
-                 aiTutorTitle: "✨ Tuteur IA",
-                 aiTutorDescription: "Bloqué sur un problème ? Décrivez-le et l'IA vous donnera une explication simple.",
-                 aiTutorPlaceholder: "Ex : Pourquoi le ciel est-il bleu ?",
-                 aiTutorGenerateBtn: "Expliquer le Concept",
-                 aiTutorLoading: "Réflexion...",
-                 todoTitle: "Liste de Tâches",
-                 todoPlaceholder: "Ajouter une nouvelle tâche...",
-                 settingsTitle: "Paramètres",
-                 focusLabel: "Concentration",
-                 shortBreakLabel: "Pause Courte",
-                 longBreakLabel: "Pause Longue",
-                 multiplayer: "Multijoueur",
-                 biome: "Biome",
-                 music: "Musique",
-                 language: "Langue",
-                 fullscreen: "Plein écran",
-                 zombieRound: "Manche:",
-                 zombieKills: "Éliminations:"
+             fr: {
+                aiTutorTitle: "✨ Tuteur IA",
+                aiTutorDescription: "Bloqué sur un problème ? Décrivez-le et l'IA vous donnera une explication simple.",
+                aiTutorPlaceholder: "Ex : Pourquoi le ciel est-il bleu ?",
+                aiTutorGenerateBtn: "Expliquer le Concept",
+                aiTutorLoading: "Réflexion...",
+                tutorPrompt: "Vous êtes un tuteur amical et expert. Votre objectif est d'expliquer des concepts difficiles d'une manière très simple et facile à comprendre. Utilisez des analogies et un langage clair. Répondez toujours en français.",
+                aiHistoryTitle: "Historique",
+                aiHistoryEmpty: "Aucune question récente.",
+                apiKeyTitle: "Clé API Gemini",
+                apiKeyDescription: "Pour utiliser le tuteur IA, vous avez besoin d'une clé API de Google AI Studio.",
+                apiKeyLabel: "Votre clé API",
+                apiKeySave: "Enregistrer et Continuer",
+                apiKeyInvalid: "La clé API n'est pas valide. Veuillez réessayer.",
+                todoTitle: "Liste de Tâches",
+                todoPlaceholder: "Ajouter une nouvelle tâche...",
+                settingsTitle: "Paramètres",
+                focusLabel: "Concentration",
+                shortBreakLabel: "Pause Courte",
+                longBreakLabel: "Pause Longue",
+                multiplayer: "Multijoueur",
+                biome: "Biome",
+                music: "Musique",
+                language: "Langue",
+                fullscreen: "Plein écran",
+                zombieRound: "Manche:",
+                zombieKills: "Éliminations:",
+                selectYourClass: "Sélectionnez votre classe",
+                chooseYourStyle: "Choisissez votre style de combat.",
+                classScout: "Éclaireur",
+                classSoldier: "Soldat",
+                classTank: "Tank",
+                statHealth: "Vie",
+                statSpeed: "Vitesse",
+                statSpeedFast: "Très rapide",
+                statSpeedNormal: "Normale",
+                statSpeedSlow: "Lente",
+                statWeapon: "Arme",
+                weaponPistol: "Pistolet (Dégâts faibles, cadence élevée)",
+                weaponRifle: "Fusil (Dégâts moyens, cadence moyenne)",
+                weaponShotgun: "Fusil à pompe (Dégâts élevés, cadence faible)",
+                waitingForOpponent: "En attente de l'adversaire...",
+                duelFinished: "Duel terminé !",
+                youWon: "Vous avez gagné !",
+                youLost: "Vous avez perdu...",
+                itsADraw: "Égalité !",
+                continue: "Continuer",
+                youDied: "Vous êtes mort !",
+                youSurvivedToRound: "Vous avez survécu jusqu'à la manche {round} avec {kills} éliminations.",
+                retry: "Réessayer",
+                exitMode: "Quitter le mode",
+                timeUp: "Temps écoulé !",
+                youReachedRound: "Vous avez atteint la manche {round} avec {kills} éliminations."
              },
              zh: {
-                 aiTutorTitle: "✨ AI导师",
-                 aiTutorDescription: "遇到问题了吗？描述一下，AI会给你一个简单的解释让你继续前进。",
-                 aiTutorPlaceholder: "例如：天空为什么是蓝色的？",
-                 aiTutorGenerateBtn: "解释概念",
-                 aiTutorLoading: "思考中...",
-                 todoTitle: "待办事项",
-                 todoPlaceholder: "添加新任务...",
-                 settingsTitle: "设置",
-                 focusLabel: "专注",
-                 shortBreakLabel: "短暂休息",
-                 longBreakLabel: "长时间休息",
-                 multiplayer: "多人游戏",
-                 biome: "生物群系",
-                 music: "音乐",
-                 language: "语言",
-                 fullscreen: "全屏",
-                 zombieRound: "回合:",
-                 zombieKills: "击杀:"
+                aiTutorTitle: "✨ AI导师",
+                aiTutorDescription: "遇到问题了吗？描述一下，AI会给你一个简单的解释让你继续前进。",
+                aiTutorPlaceholder: "例如：天空为什么是蓝色的？",
+                aiTutorGenerateBtn: "解释概念",
+                aiTutorLoading: "思考中...",
+                tutorPrompt: "你是一位友好而专业的导师。你的目标是用非常简单易懂的方式向感觉困惑的学生解释困难的概念。使用类比和清晰的语言。请总是用中文回答。",
+                aiHistoryTitle: "历史记录",
+                aiHistoryEmpty: "没有最近的问题。",
+                apiKeyTitle: "Gemini API 密钥",
+                apiKeyDescription: "要使用AI导师，您需要一个来自 Google AI Studio 的 API 密钥。",
+                apiKeyLabel: "您的 API 密钥",
+                apiKeySave: "保存并继续",
+                apiKeyInvalid: "API 密钥无效。请重试。",
+                todoTitle: "待办事项",
+                todoPlaceholder: "添加新任务...",
+                settingsTitle: "设置",
+                focusLabel: "专注",
+                shortBreakLabel: "短暂休息",
+                longBreakLabel: "长时间休息",
+                multiplayer: "多人游戏",
+                biome: "生物群系",
+                music: "音乐",
+                language: "语言",
+                fullscreen: "全屏",
+                zombieRound: "回合:",
+                zombieKills: "击杀:",
+                selectYourClass: "选择你的职业",
+                chooseYourStyle: "选择你的战斗风格。",
+                classScout: "侦察兵",
+                classSoldier: "士兵",
+                classTank: "坦克",
+                statHealth: "生命值",
+                statSpeed: "速度",
+                statSpeedFast: "非常快",
+                statSpeedNormal: "普通",
+                statSpeedSlow: "慢",
+                statWeapon: "武器",
+                weaponPistol: "手枪（低伤害，高射速）",
+                weaponRifle: "步枪（中等伤害，中等射速）",
+                weaponShotgun: "霰弹枪（高伤害，低射速）",
+                waitingForOpponent: "等待对手...",
+                duelFinished: "对决结束！",
+                youWon: "你赢了！",
+                youLost: "你输了...",
+                itsADraw: "平局！",
+                continue: "继续",
+                youDied: "你死了！",
+                youSurvivedToRound: "你存活到第 {round} 回合，击杀了 {kills} 个敌人。",
+                retry: "重试",
+                exitMode: "退出模式",
+                timeUp: "时间到！",
+                youReachedRound: "你到达了第 {round} 回合，击杀了 {kills} 个敌人。"
              },
              hi: {
-                 aiTutorTitle: "✨ एआई ट्यूटर",
-                 aiTutorDescription: "किसी समस्या में फंस गए हैं? इसका वर्णन करें और एआई आपको एक सरल व्याख्या देगा।",
-                 aiTutorPlaceholder: "जैसे: आकाश नीला क्यों है?",
-                 aiTutorGenerateBtn: "अवधारणा समझाओ",
-                 aiTutorLoading: "सोच रहा है...",
-                 todoTitle: "कार्य सूची",
-                 todoPlaceholder: "एक नया कार्य जोड़ें...",
-                 settingsTitle: "समायोजन",
-                 focusLabel: "केंद्र",
-                 shortBreakLabel: "छोटा विराम",
-                 longBreakLabel: "लंबा विराम",
-                 multiplayer: "मल्टीप्लेयर",
-                 biome: "बायोम",
-                 music: "संगीत",
-                 language: "भाषा",
-                 fullscreen: "पूर्ण स्क्रीन",
-                 zombieRound: "राउंड:",
-                 zombieKills: "हत्या:"
+                aiTutorTitle: "✨ एआई ट्यूटर",
+                aiTutorDescription: "किसी समस्या में फंस गए हैं? इसका वर्णन करें और एआई आपको एक सरल व्याख्या देगा।",
+                aiTutorPlaceholder: "जैसे: आकाश नीला क्यों है?",
+                aiTutorGenerateBtn: "अवधारणा समझाओ",
+                aiTutorLoading: "सोच रहा है...",
+                tutorPrompt: "आप एक मिलनसार और विशेषज्ञ शिक्षक हैं। आपका लक्ष्य कठिन अवधारणाओं को बहुत ही सरल और समझने में आसान तरीके से समझाना है। उपमाओं और स्पष्ट भाषा का प्रयोग करें। हमेशा हिंदी में उत्तर दें।",
+                aiHistoryTitle: "इतिहास",
+                aiHistoryEmpty: "कोई हालिया प्रश्न नहीं।",
+                apiKeyTitle: "जेमिनी एपीआई कुंजी",
+                apiKeyDescription: "एआई ट्यूटर का उपयोग करने के लिए, आपको Google AI Studio से एक एपीआई कुंजी चाहिए।",
+                apiKeyLabel: "आपकी एपीआई कुंजी",
+                apiKeySave: "सहेजें और जारी रखें",
+                apiKeyInvalid: "एपीआई कुंजी अमान्य है। कृपया पुन: प्रयास करें।",
+                todoTitle: "कार्य सूची",
+                todoPlaceholder: "एक नया कार्य जोड़ें...",
+                settingsTitle: "समायोजन",
+                focusLabel: "केंद्र",
+                shortBreakLabel: "छोटा विराम",
+                longBreakLabel: "लंबा विराम",
+                multiplayer: "मल्टीप्लेयर",
+                biome: "बायोम",
+                music: "संगीत",
+                language: "भाषा",
+                fullscreen: "पूर्ण स्क्रीन",
+                zombieRound: "राउंड:",
+                zombieKills: "हत्या:",
+                selectYourClass: "अपनी कक्षा चुनें",
+                chooseYourStyle: "अपनी युद्ध शैली चुनें।",
+                classScout: "स्काउट",
+                classSoldier: "सैनिक",
+                classTank: "टैंक",
+                statHealth: "स्वास्थ्य",
+                statSpeed: "गति",
+                statSpeedFast: "बहुत तेज़",
+                statSpeedNormal: "सामान्य",
+                statSpeedSlow: "धीमी",
+                statWeapon: "हथियार",
+                weaponPistol: "पिस्तौल (कम क्षति, उच्च फायर रेट)",
+                weaponRifle: "राइफल (मध्यम क्षति, मध्यम फायर रेट)",
+                weaponShotgun: "शॉटगन (उच्च क्षति, कम फायर रेट)",
+                waitingForOpponent: "प्रतिद्वंद्वी की प्रतीक्षा में...",
+                duelFinished: "द्वंद्व समाप्त!",
+                youWon: "आप जीत गए!",
+                youLost: "आप हार गए...",
+                itsADraw: "यह एक ड्रॉ है!",
+                continue: "जारी रखें",
+                youDied: "आप मर गए!",
+                youSurvivedToRound: "आप {round} राउंड तक जीवित रहे और {kills} मारे।",
+                retry: "पुनः प्रयास करें",
+                exitMode: "मोड से बाहर निकलें",
+                timeUp: "समय समाप्त!",
+                youReachedRound: "आप {round} राउंड तक पहुंचे और {kills} मारे।"
              }
         };
 
@@ -2016,11 +2279,23 @@
                     } else if (el.title !== undefined && el.tagName === 'BUTTON') {
                         el.title = translation;
                     }
-                    else {
-                        el.textContent = translation;
+                    else if (el.tagName === 'H3' || el.tagName === 'H2' || el.tagName === 'BUTTON' || el.tagName === 'SPAN') {
+                         el.textContent = translation;
+                    } else {
+                        // For complex elements like <p><strong>Key:</strong> Value</p>
+                        const strongTag = el.querySelector('strong');
+                        if (strongTag) {
+                            const strongKey = strongTag.dataset.translateKey || key;
+                             if(translations[lang][strongKey]) {
+                                strongTag.textContent = translations[lang][strongKey] + ':';
+                             }
+                        } else {
+                            el.textContent = translation;
+                        }
                     }
                 }
             });
+            renderAiHistory();
         }
 
 
@@ -2043,12 +2318,34 @@
             localStorage.setItem('focusGroveTasks', JSON.stringify(tasks));
         }
 
-        function loadTasks() {
+        function renderAiHistory() {
+            aiHistoryList.innerHTML = '';
+            if (aiHistory.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = translations[state.currentLang].aiHistoryEmpty || 'No hay preguntas recientes.';
+                li.style.color = '#888';
+                li.style.fontStyle = 'italic';
+                aiHistoryList.appendChild(li);
+                return;
+            }
+            [...aiHistory].reverse().forEach(historyItem => {
+                const li = document.createElement('li');
+                li.textContent = historyItem.question;
+                li.title = historyItem.question;
+                li.addEventListener('click', () => {
+                    aiTutorPromptInput.value = historyItem.question;
+                    aiTutorOutput.innerHTML = historyItem.answer;
+                    aiTutorLoading.classList.add('hidden');
+                });
+                aiHistoryList.appendChild(li);
+            });
+        }
+
+        function loadLocalStorageData() {
             const storedTasks = localStorage.getItem('focusGroveTasks');
             if (storedTasks) {
                 tasks = JSON.parse(storedTasks);
                 renderTasks();
-                // We will let the multiplayer sync handle showing initial trees
                 if(!currentGameState.inMultiplayer) {
                     tasks.forEach(task => {
                         if (task.completed) {
@@ -2057,6 +2354,11 @@
                     });
                 }
             }
+             const storedAiHistory = localStorage.getItem('focusGroveAiHistory');
+            if(storedAiHistory) {
+                aiHistory = JSON.parse(storedAiHistory);
+            }
+            geminiApiKey = localStorage.getItem('geminiApiKey');
         }
         
         function addTask() {
@@ -2142,15 +2444,17 @@
         }
         
         async function getTutorExplanation() {
-            const userQuery = aiTutorPromptInput.value;
-            const systemPrompt = "Eres un tutor amigable y experto. Tu objetivo es explicar conceptos difíciles de una manera muy simple y fácil de entender. Usa analogías y un lenguaje claro.";
+            const userQuery = aiTutorPromptInput.value.trim();
+            if (!userQuery) return;
+
+            const systemPrompt = translations[state.currentLang].tutorPrompt || translations.es.tutorPrompt;
             
             aiTutorLoading.classList.remove('hidden');
             aiTutorOutput.innerHTML = '';
             aiTutorGenerateBtn.disabled = true;
 
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = geminiApiKey; // Use the stored API key
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -2162,17 +2466,45 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+                if (!response.ok) {
+                    // If API key is bad, notify user and clear it
+                    if(response.status === 400 || response.status === 403) {
+                         console.error(translations[state.currentLang].apiKeyInvalid);
+                         localStorage.removeItem('geminiApiKey');
+                         geminiApiKey = null;
+                         aiTutorModal.classList.remove('active');
+                         apiKeyModal.classList.add('active');
+                    }
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
                 const result = await response.json();
                 const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
                 if (text) {
-                    aiTutorOutput.innerHTML = text.split('\n').filter(p => p.trim()).map(p => `<p class="mb-2">${p}</p>`).join('');
+                     const htmlContent = text
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        .split('\n').filter(p => p.trim()).map(p => `<p style="margin-bottom: 0.5rem;">${p}</p>`).join('');
+
+                    aiTutorOutput.innerHTML = htmlContent;
+
+                    // Save question and answer to history
+                    if (!aiHistory.some(item => item.question === userQuery)) {
+                        aiHistory.push({ question: userQuery, answer: htmlContent });
+                        if (aiHistory.length > 10) {
+                            aiHistory.shift(); // Keep history to max 10 items
+                        }
+                        localStorage.setItem('focusGroveAiHistory', JSON.stringify(aiHistory));
+                        renderAiHistory();
+                    }
                 } else {
                     throw new Error("No text returned from API.");
                 }
             } catch(error) {
                 console.error("Gemini API error:", error);
-                aiTutorOutput.innerHTML = `<p class="text-red-500">Error al obtener la explicación.</p>`;
+                aiTutorOutput.innerHTML = `<p style="color: #e24a4a;">Error al obtener la explicación.</p>`;
             } finally {
                 aiTutorLoading.classList.add('hidden');
                 aiTutorGenerateBtn.disabled = false;
@@ -2311,7 +2643,7 @@
         }
 
         function listenToGameChanges(gameId) {
-            if(currentGameState.unsubscribe) currentGameState.unsubscribe(); 
+             if(currentGameState.unsubscribe) currentGameState.unsubscribe(); 
             
             localStorage.setItem('focusGroveLastGame', gameId);
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
@@ -2332,8 +2664,8 @@
                 currentGameState.playerCount = Object.keys(gameData.players).length;
                 currentGameState.playerIds = Object.keys(gameData.players);
 
-                // FIX 1: Close waiting modal based on player count
-                if (currentGameState.isHost && Object.keys(gameData.players).length > 1 && !multiplayerWaitingView.classList.contains('hidden')) {
+
+                if (currentGameState.isHost && gameData.status === 'active' && !multiplayerWaitingView.classList.contains('hidden')) {
                     multiplayerModal.classList.remove('active');
                 }
                 
@@ -2342,7 +2674,7 @@
                     versusScoreboard.classList.add('hidden');
                 } else if (gameData.mode === 'versus') {
                     syncVersusState(gameData);
-                    syncDuelState(gameData);
+                    syncDuelState(gameData); // New function for minigame sync
                 }
             });
         }
@@ -2559,7 +2891,7 @@
             }
         }
 
-        async function syncDuelState(gameData) {
+        function syncDuelState(gameData) {
             const newDuelStatus = gameData.duel?.status || 'inactive';
 
             // Transition from inactive to selecting
@@ -2617,41 +2949,22 @@
             if (newDuelStatus === 'active' && duelState.active) {
                 const duelData = gameData.duel;
                 for (const id in duelData.players) {
-                    if (id !== userId && duelState.remotePlayer) {
-                        // Update remote player
+                    if (id !== userId && duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) { // Update remote player
                         const remoteData = duelData.players[id];
                         if (remoteData.position) {
                            duelState.remotePlayer.userData.targetPosition.set(remoteData.position.x, remoteData.position.y, remoteData.position.z);
+                           duelState.remotePlayer.userData.targetRotationY = remoteData.rotationY;
                         }
-                        duelState.remotePlayer.userData.targetRotationY = remoteData.rotationY || 0;
-                        duelState.remotePlayer.userData.targetRotationX = remoteData.rotationX || 0; // NUEVO
                         duelState.players[id].health = remoteData.health;
                         duelState.players[id].score = remoteData.score;
-
-                        // Check if opponent died
-                        if (duelState.players[id].health <= 0 && currentGameState.isHost) {
-                            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                            await updateDoc(gameRef, {
-                                [`duel.players.${userId}.score`]: increment(1)
-                            });
-                            // Host tells the other player's character to respawn by resetting their health
-                            await updateDoc(gameRef, {
-                                [`duel.players.${id}.health`]: CLASS_STATS[duelState.players[id].class].maxHealth
-                            });
-                        }
-
-                    } else if (id === userId && duelState.localPlayer) {
-                        // Update local player health if changed by opponent OR if respawned by host
+                    } else if (id === userId && duelState.localPlayer) { // Update local player health if changed by opponent
                         const newHealth = duelData.players[id].health;
                         const oldHealth = duelState.localPlayer.health;
                         if (newHealth < oldHealth) {
                             const damageTaken = oldHealth - newHealth;
                             duelState.localPlayer.takeDamage(damageTaken);
-                        } else if (newHealth > oldHealth) { // Respawn case
+                        } else {
                             duelState.localPlayer.health = newHealth;
-                            if (duelState.localPlayer.isRespawning) { // Check ensures it's a true respawn event
-                                duelState.localPlayer.respawn();
-                            }
                         }
                     }
                 }
@@ -2660,8 +2973,9 @@
                  // Sync projectiles
                 if (duelData.projectiles) {
                      duelData.projectiles.forEach(p => {
+                          // Avoid creating a projectile we already know about
                          if (!duelState.projectiles.some(proj => proj.userData.id === p.id)) {
-                             if (p.owner !== userId) {
+                             if (p.owner !== userId) { // Only spawn projectiles from the other player
                                  spawnProjectile(p, false);
                                  playRemoteShotSound(p.owner);
                              }
@@ -2716,6 +3030,7 @@
                 const p2Class = duelData.players[playerIds[1]]?.class;
 
                 if (p1Class && p2Class) {
+                    // Only host transitions the game state to active
                     if (currentGameState.isHost) {
                          await updateDoc(gameRef, { 'duel.status': 'active' });
                     }
@@ -2731,51 +3046,50 @@
             duelState.active = true;
             document.body.classList.add('duel-active');
             document.body.classList.remove('ui-hidden');
+
+            // Hide normal UI, show duel UI
             document.querySelectorAll('.controls').forEach(c => c.classList.add('hidden'));
             timerDisplay.classList.add('timer-display-duel');
             duelHud.classList.remove('hidden');
             localPlayerDuelHud.classList.remove('hidden');
-            duelModeBtn.classList.add('hidden');
-            if (!state.isRunning) startTimer();
-            clearGrove();
+            duelModeBtn.classList.add('hidden'); // Ocultar el botón de duelo al iniciar
+
+            if (!state.isRunning) {
+                startTimer();
+            }
+            
+            clearGrove(); // Clear trees for the duel
             addVegetation();
 
             const opponentId = currentGameState.playerIds.find(id => id !== userId);
-            const myClass = gameData.duel.players?.[userId]?.class || 'soldier';
-            const opponentClass = gameData.duel.players?.[opponentId]?.class || 'soldier';
+
+            const myClass = (gameData.duel.players?.[userId]?.class) || 'soldier';
+            const opponentClass = (gameData.duel.players?.[opponentId]?.class) || 'soldier';
 
             try {
                 duelState.localPlayer = new PlayerController(true, myClass);
-
-                // ========== CORRECCIÓN 1: CREAR REMOTO PARA AMBOS ==========
+                
                 const remotePlayerGroup = new THREE.Group();
                 const bodyGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
                 bodyGeo.translate(0, 0.5, 0);
-                // Mejora 4: Color distintivo
-                const bodyMat = new THREE.MeshStandardMaterial({
-                    color: opponentId === gameData.hostId ? 0x4a90e2 : 0xe24a4a // Primary for host, Secondary for guest
-                });
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
                 const remoteBody = new THREE.Mesh(bodyGeo, bodyMat);
-                remoteBody.castShadow = true;
                 remotePlayerGroup.add(remoteBody);
 
                 const remoteWeapon = duelState.localPlayer.createWeaponMesh(opponentClass);
-                remoteWeapon.position.set(0.3, 1.4, 0.4);
+                remoteWeapon.position.set(0, 1.4, 0.4);
                 remotePlayerGroup.add(remoteWeapon);
 
                 scene.add(remotePlayerGroup);
                 duelState.remotePlayer = remotePlayerGroup;
                 duelState.remotePlayer.userData.targetPosition = new THREE.Vector3();
                 duelState.remotePlayer.userData.targetRotationY = 0;
-                duelState.remotePlayer.userData.targetRotationX = 0; // NUEVO
-                duelState.remotePlayer.userData.weapon = remoteWeapon; // NUEVO
-                // ========== FIN CORRECCIÓN 1 ==========
 
                 duelState.localPlayer.respawn();
                 enableShooterControls();
             } catch (err) {
-                console.error('Failed to create PlayerControllers', err);
-                if (duelState.localPlayer) duelState.localPlayer.dispose();
+                console.error("Failed to create PlayerControllers:", err);
+                if (duelState.localPlayer && duelState.localPlayer.dispose) duelState.localPlayer.dispose();
                 if (duelState.remotePlayer) scene.remove(duelState.remotePlayer);
                 duelState.localPlayer = null;
                 duelState.remotePlayer = null;
@@ -2784,9 +3098,8 @@
             }
         }
 
-
         async function endDuelScene(gameData) {
-            if (!duelState.active) return;
+            if (!duelState.active) return; // Prevent multiple triggers
             
             duelState.active = false;
             duelState.status = 'finished';
@@ -2794,6 +3107,7 @@
             document.body.classList.remove('duel-active');
             disableShooterControls();
 
+            // Clean up scene
             if (duelState.localPlayer) {
                 duelState.localPlayer.dispose();
             }
@@ -2803,6 +3117,7 @@
             duelState.localPlayer = null;
             duelState.remotePlayer = null;
 
+            // Show results
             duelHud.classList.add('hidden');
             localPlayerDuelHud.classList.add('hidden');
             timerDisplay.classList.remove('timer-display-duel');
@@ -2813,28 +3128,36 @@
             const opponentScore = duelData.players[opponentId]?.score || 0;
 
             document.getElementById('final-duel-score').textContent = `${myScore} - ${opponentScore} Bajas`;
+            
+            const winnerText = document.getElementById('duel-winner-text');
             if (myScore > opponentScore) {
-                document.getElementById('duel-winner-text').textContent = "¡Has ganado!";
+                winnerText.textContent = translations[state.currentLang].youWon;
+                winnerText.dataset.translateKey = 'youWon';
             } else if (opponentScore > myScore) {
-                document.getElementById('duel-winner-text').textContent = "Has perdido...";
+                winnerText.textContent = translations[state.currentLang].youLost;
+                winnerText.dataset.translateKey = 'youLost';
             } else {
-                document.getElementById('duel-winner-text').textContent = "¡Es un empate!";
+                winnerText.textContent = translations[state.currentLang].itsADraw;
+                winnerText.dataset.translateKey = 'itsADraw';
             }
             duelResultsModal.classList.add('active');
         }
 
         async function closeDuelResults() {
             duelResultsModal.classList.remove('active');
+            // Only host resets the duel state in Firestore
             if (currentGameState.inMultiplayer) {
                 if (currentGameState.isHost) {
                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                     await updateDoc(gameRef, { 'duel.status': 'inactive' });
                 }
             }
+             // Restore normal UI
             document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
             if (currentGameState.inMultiplayer) {
                 versusScoreboard.classList.remove('hidden');
             }
+            // Switch back to focus mode, paused
             await switchMode('focus');
             pauseTimer();
         }
@@ -2846,9 +3169,11 @@
              const myClassStats = myInfo.classStats;
 
              if(zombieModeState.active) {
+                // In zombie mode, we only show local player health
                 localPlayerHealthBar.style.width = `${(myInfo.health / myClassStats.maxHealth) * 100}%`;
                 document.getElementById('local-player-name-hud').textContent = `Tú`;
              } else if (duelState.active) {
+                // Duel mode logic
                 const opponentId = currentGameState.playerIds.find(id => id !== userId);
                 const opponentInfo = duelState.players[opponentId];
                 if(!opponentInfo) return;
@@ -2874,6 +3199,7 @@
             };
             pointerLockControls.addEventListener('unlock', onUnlock);
 
+            // Initial lock
             pointerLockControls.lock();
         }
 
@@ -2896,7 +3222,8 @@
             projectile.userData.velocity = velocity;
             projectile.userData.owner = data.owner;
             projectile.userData.id = data.id;
-            projectile.userData.spawnTime = data.spawnTime;
+            projectile.userData.range = data.range;
+            projectile.userData.spawnTime = Date.now();
             projectile.userData.originalData = data;
             
             scene.add(projectile);
@@ -2921,7 +3248,7 @@
                 new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0)
             ];
             let stuckCount = 0;
-            const checkDistance = 1.0; 
+            const checkDistance = 1.0; // Check for collisions within 1 unit
 
             for (const direction of directions) {
                 stuckCheckRaycaster.set(playerPosition, direction);
@@ -2932,32 +3259,10 @@
                 }
             }
 
+            // If 4 or more rays hit something close, we're likely inside an object
             if (stuckCount >= 4) {
                 console.warn("Player stuck! Forcing respawn.");
                 duelState.localPlayer.respawn();
-            }
-        }
-
-        async function cleanUpProjectiles() {
-            if (!currentGameState.inMultiplayer || !currentGameState.isHost || !duelState.active) return;
-            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-            try {
-                const gameSnap = await getDoc(gameRef);
-                if (gameSnap.exists()) {
-                    const gameData = gameSnap.data();
-                    const projectiles = gameData.duel?.projectiles || [];
-                    const now = Date.now();
-                    const projectilesToRemove = projectiles.filter(p => now - (p.spawnTime || 0) > 2000);
-
-                    if (projectilesToRemove.length > 0) {
-                        await updateDoc(gameRef, {
-                            projectiles: arrayRemove(...projectilesToRemove)
-                        });
-                    }
-                }
-            } catch (e) {
-                // This might fail if quota is still an issue, but we don't want it to crash the app
-                console.warn("Could not clean up projectiles:", e.message);
             }
         }
 
@@ -3001,10 +3306,31 @@
             // Modals
             settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
             tasksBtn.addEventListener('click', () => tasksModal.classList.add('active'));
-            aiTutorBtn.addEventListener('click', () => aiTutorModal.classList.add('active'));
+            
+            // AI Tutor Listener (Restored logic)
+            aiTutorBtn.addEventListener('click', () => {
+                if (geminiApiKey) {
+                    renderAiHistory();
+                    aiTutorModal.classList.add('active');
+                } else {
+                    apiKeyModal.classList.add('active');
+                }
+            });
+            
+            saveApiKeyBtn.addEventListener('click', () => {
+                const key = apiKeyInput.value.trim();
+                if (key) {
+                    geminiApiKey = key;
+                    localStorage.setItem('geminiApiKey', key);
+                    apiKeyModal.classList.remove('active');
+                    renderAiHistory();
+                    aiTutorModal.classList.add('active');
+                }
+            });
+
+
             multiplayerBtn.addEventListener('click', () => {
                 if(currentGameState.inMultiplayer) {
-                    // Using custom modal instead of confirm
                     const leaveModal = document.createElement('div');
                     leaveModal.innerHTML = `<div class="modal active"><div class="modal-content" style="max-width: 400px; text-align: center;"><p style="margin-bottom: 1rem;">¿Quieres salir de la partida multijugador actual?</p><button class="modal-button" id="confirm-leave">Sí, salir</button><button class="modal-button secondary" id="cancel-leave">Cancelar</button></div></div>`;
                     document.body.appendChild(leaveModal);
@@ -3027,8 +3353,7 @@
                 });
             });
             
-            
-            [settingsModal, tasksModal, aiTutorModal, multiplayerModal, classSelectionModal].forEach(modal => {
+            [settingsModal, tasksModal, aiTutorModal, apiKeyModal, multiplayerModal, classSelectionModal].forEach(modal => {
                 if (modal) {
                     modal.addEventListener('click', (e) => {
                         if(e.target === modal) modal.classList.remove('active');
@@ -3082,6 +3407,9 @@
             volumeSlider.addEventListener('input', () => updateVolume());
 
             document.addEventListener('click', (e) => {
+                if ((duelState.active || zombieModeState.active) && !pointerLockControls.isLocked) {
+                   // Pointer lock is now handled by enableShooterControls
+                }
                 if (soundPanel && !soundPanel.contains(e.target) && !soundMenuBtn.contains(e.target)) {
                     soundPanel.classList.remove('active');
                 }
@@ -3195,12 +3523,6 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            const now = Date.now();
-            if (currentGameState.isHost && now - lastProjectileCleanup > 2000) { // Every 2 seconds
-                lastProjectileCleanup = now;
-                cleanUpProjectiles();
-            }
-
             if (!document.getElementById('credit-line')) {
                 addCreditLine();
             }
@@ -3210,20 +3532,11 @@
             if (duelState.localPlayer) {
                 duelState.localPlayer.update(delta);
             }
-            // ========== CORRECCIÓN 3.C: APLICAR ROTACIÓN VERTICAL AL ARMA ==========
-            if (duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) {
+             if (duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) {
                 duelState.remotePlayer.position.lerp(duelState.remotePlayer.userData.targetPosition, delta * 10);
                 const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), duelState.remotePlayer.userData.targetRotationY);
                 duelState.remotePlayer.quaternion.slerp(q, delta * 10);
-
-                if (duelState.remotePlayer.userData.weapon) {
-                    const weapon = duelState.remotePlayer.userData.weapon;
-                    const targetPitch = duelState.remotePlayer.userData.targetRotationX || 0;
-                    weapon.rotation.x = THREE.MathUtils.lerp(weapon.rotation.x, targetPitch, delta * 10);
-                }
             }
-            // =================================================================
-
             if ((duelState.active || zombieModeState.active) && duelState.localPlayer) {
                 checkIfStuck(); 
             } else {
@@ -3250,54 +3563,53 @@
                 const p = duelState.projectiles[i];
                 if (!p || !p.userData || !p.userData.velocity) continue;
                 
-                if (!p.userData.prevPosition) p.userData.prevPosition = p.position.clone();
-                else p.userData.prevPosition.copy(p.position);
-
                 p.position.addScaledVector(p.userData.velocity, delta);
                 let projectileRemoved = false;
 
+                // --- Collision Logic ---
                 if (p.userData.owner === userId) {
                     if (zombieModeState.active) {
-                        // ... zombie logic ...
-                    } else if (duelState.remotePlayer) {
-                        // ========== CORRECCIÓN 2: RAYCAST PRECISO ==========
-                        const prevPos = p.userData.prevPosition;
-                        const currentPos = p.position.clone();
-                        const direction = new THREE.Vector3().subVectors(currentPos, prevPos);
-                        const distance = direction.length();
-                        direction.normalize();
-                        
-                        if (distance > 0) {
-                            const raycaster = new THREE.Raycaster(prevPos, direction, 0, distance);
-                            const intersects = raycaster.intersectObject(duelState.remotePlayer, true);
-
-                            if (intersects.length > 0) {
-                                if (currentGameState.inMultiplayer) {
-                                    if(isAudioReady && soundSources.hit_marker) {
-                                        soundSources.hit_marker.triggerAttackRelease("C7", "32n");
-                                    }
-                                    const opponentId = currentGameState.playerIds.find(id => id !== userId);
-                                    const damage = duelState.localPlayer.classStats.weapon.damage;
-                                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                                    const plainProjectileData = p.userData.originalData;
-
-                                    if(plainProjectileData) {
-                                        updateDoc(gameRef, {
-                                            [`duel.players.${opponentId}.health`]: increment(-damage),
-                                            projectiles: arrayRemove(plainProjectileData)
-                                        });
-                                    }
-                                }
+                        // Hitting zombies
+                        for (let j = zombieModeState.zombies.length - 1; j >= 0; j--) {
+                            const z = zombieModeState.zombies[j];
+                            if (p.position.distanceTo(z.mesh.position) < 1.2) {
+                                const damage = duelState.localPlayer.classStats.weapon.damage;
+                                z.takeDamage(damage);
                                 scene.remove(p);
                                 duelState.projectiles.splice(i, 1);
                                 projectileRemoved = true;
+                                break; 
                             }
                         }
-                        // ========== FIN CORRECCIÓN 2 ==========
+                    } else if (duelState.remotePlayer) {
+                        // Hitting opponent in duel mode
+                        const remotePlayerBox = new THREE.Box3().setFromObject(duelState.remotePlayer);
+                        if (remotePlayerBox.containsPoint(p.position)) {
+                             if (currentGameState.inMultiplayer) {
+                                 if(isAudioReady && soundSources.hit_marker) {
+                                     soundSources.hit_marker.triggerAttackRelease("C7", "32n");
+                                 }
+                                 const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                                 const damage = duelState.localPlayer.classStats.weapon.damage;
+                                 const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                                 const plainProjectileData = p.userData.originalData;
+
+                                 if(plainProjectileData) {
+                                     updateDoc(gameRef, {
+                                         [`duel.players.${opponentId}.health`]: increment(-damage),
+                                         projectiles: arrayRemove(plainProjectileData)
+                                     });
+                                 }
+                             }
+                            scene.remove(p);
+                            duelState.projectiles.splice(i, 1);
+                            projectileRemoved = true;
+                        }
                     }
                 }
                 if (projectileRemoved) continue;
 
+                // Hitting Trees
                 let hitTree = false;
                 for (const tree of grove) {
                     const trunk = tree.children[0];
@@ -3315,12 +3627,14 @@
                     continue;
                 }
 
-                if (Date.now() - p.userData.spawnTime > 2000) { // 2 second lifetime
+                // Despawn projectile after time/range
+                if (Date.now() - p.userData.spawnTime > p.userData.range * 100) {
                     scene.remove(p);
                     duelState.projectiles.splice(i, 1);
                 }
             }
             
+            // ===== ZOMBIE MODE LOGIC =====
             if (zombieModeState.active) {
                 zombieModeState.waveTimer -= delta;
                 const playerPosition = duelState.localPlayer ? pointerLockControls.getObject().position : new THREE.Vector3();
@@ -3374,7 +3688,7 @@
                 
                 init3D();
                 initAudio();
-                loadTasks();
+                loadLocalStorageData();
                 setupEventListeners();
                 animate();
 
@@ -3393,6 +3707,7 @@
         
         main();
 
+        // ===== PLAYER CONTROLLER CLASS =====
         class PlayerController {
             constructor(isLocal, playerClass) {
                 this.isLocal = isLocal;
@@ -3414,46 +3729,57 @@
                 this.timeSinceLastHit = 0;
                 this.lastHitTime = 0;
                 this.keys = {
-                    KeyW: false, KeyA: false, KeyS: false, KeyD: false,
-                    Space: false, ShiftLeft: false
+                    KeyW: false,
+                    KeyA: false,
+                    KeyS: false,
+                    KeyD: false,
+                    Space: false,
+                    ShiftLeft: false
                 };
-                this.mouse = { down: false };
-
+                this.mouse = {
+                    down: false
+                };
                 if (this.isLocal) {
                     this.camera = camera;
                     this.weapon = this.createWeaponMesh(playerClass);
                     this.camera.add(this.weapon);
                     this.mesh = new THREE.Group();
-                    this.addLocalEventListeners();
+                    document.addEventListener('keydown', (e) => {
+                        if (this.keys.hasOwnProperty(e.code)) {
+                            this.keys[e.code] = true;
+                        }
+                    });
+                    document.addEventListener('keyup', (e) => {
+                        if (this.keys.hasOwnProperty(e.code)) {
+                            this.keys[e.code] = false;
+                        }
+                    });
+                    document.addEventListener('mousedown', () => {
+                        if (pointerLockControls.isLocked) {
+                            this.mouse.down = true;
+                        }
+                    });
+                    document.addEventListener('mouseup', () => {
+                        this.mouse.down = false;
+                    });
+                } else {
+                    const bodyGeo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+                    const bodyMat = new THREE.MeshStandardMaterial({
+                        color: 0xff0000
+                    });
+                    this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
+                    scene.add(this.mesh);
+                    this.mesh.position.set(Math.random() * 40 - 20, 20, Math.random() * 40 - 20);
                 }
             }
-            
-            addLocalEventListeners() {
-                const onKey = (e) => {
-                    if (this.keys.hasOwnProperty(e.code)) {
-                         this.keys[e.code] = e.type === 'keydown';
-                    }
-                };
-                document.addEventListener('keydown', onKey);
-                document.addEventListener('keyup', onKey);
-
-                const onMouse = (e) => {
-                    if (pointerLockControls.isLocked) {
-                        this.mouse.down = e.type === 'mousedown';
-                    }
-                };
-                document.addEventListener('mousedown', onMouse);
-                document.addEventListener('mouseup', onMouse);
-            }
-            
             takeDamage(amount) {
                 if (this.isRespawning) return;
                 this.health -= amount;
                 if (this.health < 0) this.health = 0;
-                this.timeSinceLastHit = 0;
+                this.timeSinceLastHit = 0; // Reset regen timer
 
                 const now = performance.now();
-                if (now - this.lastHitTime > 200) {
+                if (now - this.lastHitTime > 200) { // Cooldown for hit sound
                     this.lastHitTime = now;
                     if (isAudioReady && soundSources.player_hit) {
                         soundSources.player_hit.triggerAttackRelease("G1", "8n");
@@ -3462,44 +3788,80 @@
 
                 updateDuelHud();
             }
-
             playShotSound() {
                 if (!isAudioReady) return;
                 switch (this.playerClass) {
-                    case 'scout': soundSources.shot_pistol.triggerAttack(); break;
-                    case 'soldier': soundSources.shot_rifle.triggerAttack(); break;
-                    case 'tank': soundSources.shot_shotgun.triggerAttack(); break;
+                    case 'scout':
+                        soundSources.shot_pistol.triggerAttack();
+                        break;
+                    case 'soldier':
+                        soundSources.shot_rifle.triggerAttack();
+                        break;
+                    case 'tank':
+                        soundSources.shot_shotgun.triggerAttack();
+                        break;
                 }
             }
-
             createWeaponMesh(playerClass) {
                 const weaponGroup = new THREE.Group();
-                const darkGray = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.5 });
-                const lightGray = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.7 });
+                const darkGray = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    roughness: 0.4,
+                    metalness: 0.5
+                });
+                const lightGray = new THREE.MeshStandardMaterial({
+                    color: 0x888888,
+                    roughness: 0.4,
+                    metalness: 0.7
+                });
                 switch (playerClass) {
                     case 'scout':
-                        const pistolBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.2), darkGray);
-                        const pistolGrip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.06), darkGray);
+                        const pistolBody = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.08, 0.1, 0.2),
+                            darkGray
+                        );
+                        const pistolGrip = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.06, 0.2, 0.06),
+                            darkGray
+                        );
                         pistolGrip.position.set(0, -0.1, -0.05);
                         pistolGrip.rotation.x = 0.2;
-                        const pistolBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8), lightGray);
+                        const pistolBarrel = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8),
+                            lightGray
+                        );
                         pistolBarrel.position.set(0, 0.03, 0.15);
                         pistolBarrel.rotation.x = Math.PI / 2;
                         weaponGroup.add(pistolBody, pistolGrip, pistolBarrel);
                         break;
                     case 'soldier':
-                        const rifleBody = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.5), darkGray);
-                        const rifleBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8), lightGray);
+                        const rifleBody = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.1, 0.12, 0.5),
+                            darkGray
+                        );
+                        const rifleBarrel = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8),
+                            lightGray
+                        );
                         rifleBarrel.position.set(0, -0.02, 0.45);
                         rifleBarrel.rotation.x = Math.PI / 2;
-                        const rifleScope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 12), darkGray);
+                        const rifleScope = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.03, 0.03, 0.15, 12),
+                            darkGray
+                        );
                         rifleScope.position.set(0, 0.1, 0);
                         rifleScope.rotation.z = Math.PI / 2;
                         weaponGroup.add(rifleBody, rifleBarrel, rifleScope);
                         break;
                     case 'tank':
-                        const shotgunBody = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 0.6), darkGray);
-                        const shotgunBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), lightGray);
+                        const shotgunBody = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.12, 0.14, 0.6),
+                            darkGray
+                        );
+                        const shotgunBarrel = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8),
+                            lightGray
+                        );
                         shotgunBarrel.position.set(0, -0.02, 0.4);
                         shotgunBarrel.rotation.x = Math.PI / 2;
                         weaponGroup.add(shotgunBody, shotgunBarrel);
@@ -3508,170 +3870,292 @@
                 weaponGroup.position.set(0.25, -0.4, -0.6);
                 return weaponGroup;
             }
-
             dispose() {
                 if (this.isLocal && this.weapon) {
                     this.camera.remove(this.weapon);
                 }
                 scene.remove(this.mesh);
             }
-            
             async respawn() {
                 console.log("🔄 Iniciando respawn...");
                 this.health = this.classStats.maxHealth;
                 this.isRespawning = true;
                 this.onGround = false;
                 this.velocity.set(0, 0, 0);
-
-                const MAX_ATTEMPTS = 50, MIN_TREE_DISTANCE = 3.5, SPAWN_RADIUS = 70;
-                const MIN_HEIGHT = 2, MAX_HEIGHT = 25, CAMERA_HEIGHT = 1.8;
-                let bestSpawn = null, bestScore = -Infinity;
-
+                const MAX_ATTEMPTS = 50;
+                const MIN_TREE_DISTANCE = 3.5;
+                const SPAWN_RADIUS = 70;
+                const MIN_HEIGHT = 2;
+                const MAX_HEIGHT = 25;
+                const CAMERA_HEIGHT = 1.8;
+                let bestSpawn = null;
+                let bestScore = -Infinity;
                 for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
                     const angle = Math.random() * Math.PI * 2;
                     const radius = Math.random() * SPAWN_RADIUS;
-                    const testX = Math.cos(angle) * radius, testZ = Math.sin(angle) * radius;
+                    const testX = Math.cos(angle) * radius;
+                    const testZ = Math.sin(angle) * radius;
                     const testY = getHeightAt(testX, -testZ);
-
-                    if (!isFinite(testY) || testY < MIN_HEIGHT || testY > MAX_HEIGHT) continue;
-
-                    let minTreeDist = Infinity, tooClose = false;
+                    if (!isFinite(testY) || testY < MIN_HEIGHT || testY > MAX_HEIGHT) {
+                        continue;
+                    }
+                    let minTreeDist = Infinity;
+                    let tooClose = false;
                     for (const tree of grove) {
-                        const dist = Math.hypot(testX - tree.position.x, testZ - tree.position.z);
-                        if (dist < MIN_TREE_DISTANCE) { tooClose = true; break; }
+                        const dx = testX - tree.position.x;
+                        const dz = testZ - tree.position.z;
+                        const dist = Math.sqrt(dx * dx + dz * dz);
+                        if (dist < MIN_TREE_DISTANCE) {
+                            tooClose = true;
+                            break;
+                        }
                         minTreeDist = Math.min(minTreeDist, dist);
                     }
                     if (tooClose) continue;
-
-                    const score = (10 - Math.abs(testY - 10)) + Math.min(minTreeDist, 10);
+                    const flatness = 10 - Math.abs(testY - 10);
+                    const treeScore = Math.min(minTreeDist, 10);
+                    const score = flatness + treeScore;
                     if (score > bestScore) {
                         bestScore = score;
-                        bestSpawn = { x: testX, y: testY, z: testZ };
+                        bestSpawn = {
+                            x: testX,
+                            y: testY,
+                            z: testZ
+                        };
                     }
                 }
-
                 if (!bestSpawn) {
                     console.warn("⚠️ No se encontró spawn seguro, usando posición central elevada");
-                    bestSpawn = { x: 0, y: 15, z: 0 };
+                    bestSpawn = {
+                        x: 0,
+                        y: 15,
+                        z: 0
+                    };
                 }
-                
-                const finalPos = new THREE.Vector3(bestSpawn.x, bestSpawn.y + CAMERA_HEIGHT, bestSpawn.z);
+                const finalPos = new THREE.Vector3(
+                    bestSpawn.x,
+                    bestSpawn.y + CAMERA_HEIGHT,
+                    bestSpawn.z
+                );
                 console.log(`✅ Spawn encontrado en (${finalPos.x.toFixed(2)}, ${finalPos.y.toFixed(2)}, ${finalPos.z.toFixed(2)})`);
-
                 if (this.isLocal) {
                     const cameraObject = pointerLockControls.getObject();
                     cameraObject.position.copy(finalPos);
-                    camera.rotation.set(0, camera.rotation.y, 0); // Reset pitch and roll
+                    camera.rotation.x = 0;
+                    camera.rotation.z = 0;
+                } else {
+                    this.mesh.position.copy(finalPos);
                 }
-                
                 this.lastValidPosition.copy(finalPos);
                 this.fallTimer = 0;
                 this.stuckTimer = 0;
                 this.isRespawning = false;
-                
                 if (this.isLocal && currentGameState.inMultiplayer) {
                     const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                     await updateDoc(gameRef, {
-                        [`duel.players.${userId}.position`]: { x: finalPos.x, y: finalPos.y, z: finalPos.z },
+                        [`duel.players.${userId}.position`]: {
+                            x: finalPos.x,
+                            y: finalPos.y,
+                            z: finalPos.z
+                        },
                         [`duel.players.${userId}.health`]: this.health
                     });
                 }
             }
-
             update(delta) {
                 if (!this.isLocal) return;
                 const cameraObject = pointerLockControls.getObject();
                 
                 if ((cameraObject.position.y < -5 || this.health <= 0) && !this.isRespawning) {
                     if (zombieModeState.active) {
-                        document.getElementById('death-modal-round').textContent = zombieModeState.round;
-                        document.getElementById('death-modal-kills').textContent = zombieModeState.kills;
+                        const deathText = translations[state.currentLang].youSurvivedToRound
+                            .replace('{round}', zombieModeState.round)
+                            .replace('{kills}', zombieModeState.kills);
+                        document.getElementById('death-modal-text').textContent = deathText;
                         document.getElementById('zombie-death-modal').classList.add('active');
                         disableShooterControls();
                         this.isRespawning = true; 
                         pauseTimer();
                     } else if (currentGameState.inMultiplayer) {
+                        const opponentId = currentGameState.playerIds.find(id => id !== userId);
+                        const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                        updateDoc(gameRef, { [`duel.players.${opponentId}.score`]: increment(1) });
                         this.respawn();
                     }
                     return;
                 }
 
-                this.timeSinceLastHit += delta;
-                if (this.timeSinceLastHit > 5.0 && this.health < this.classStats.maxHealth) {
-                    this.health = Math.min(this.classStats.maxHealth, this.health + 20 * delta);
-                    updateDuelHud();
+                if (this.velocity.y < -5 && !this.onGround) {
+                    this.fallTimer += delta;
+                    if (this.fallTimer > 3.0) {
+                        console.warn("❌ Caída prolongada detectada, respawneando...");
+                        this.respawn();
+                        return;
+                    }
+                } else {
+                    this.fallTimer = 0;
                 }
-
-                const speed = this.classStats.speed * (this.keys.ShiftLeft ? 1.5 : 1);
-                this.velocity.y -= 30.0 * delta;
-
+                if (pointerLockControls.isLocked) {
+                    const distMoved = cameraObject.position.distanceTo(this.lastValidPosition);
+                    if (distMoved < 0.1 && (this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD)) {
+                        this.stuckTimer += delta;
+                        if (this.stuckTimer > 2.0) {
+                            console.warn("❌ Jugador atascado, respawneando...");
+                            this.respawn();
+                            return;
+                        }
+                    } else if (distMoved > 0.5) {
+                        this.stuckTimer = 0;
+                        this.lastValidPosition.copy(cameraObject.position);
+                    }
+                }
+                 this.timeSinceLastHit += delta;
+                if (this.timeSinceLastHit > 5.0 && this.health < this.classStats.maxHealth) {
+                    const regenRate = 20; // Health per second
+                    this.health += regenRate * delta;
+                    if (this.health > this.classStats.maxHealth) {
+                        this.health = this.classStats.maxHealth;
+                    }
+                    updateDuelHud(); // Update the UI
+                }
+                const speed = this.classStats.speed;
+                const isMoving = this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD;
+                const gravity = this.isRespawning ? 8.0 : 30.0;
+                this.velocity.y -= gravity * delta;
                 this.direction.z = Number(this.keys.KeyW) - Number(this.keys.KeyS);
-                this.direction.x = Number(this.keys.KeyD) - Number(this.keys.KeyA);
+                this.direction.x = Number(this.keys.KeyA) - Number(this.keys.KeyD);
                 this.direction.normalize();
-
+                const effectiveSpeed = this.keys.ShiftLeft ? speed * 1.5 : speed;
                 const forwardVector = new THREE.Vector3();
                 cameraObject.getWorldDirection(forwardVector);
                 forwardVector.y = 0;
                 forwardVector.normalize();
                 const rightVector = new THREE.Vector3().crossVectors(cameraObject.up, forwardVector);
-
-                const moveX = (this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * speed * delta;
-                const moveZ = (this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * speed * delta;
+                const moveX = (this.direction.x * rightVector.x + this.direction.z * forwardVector.x) * effectiveSpeed * delta;
+                const moveZ = (this.direction.x * rightVector.z + this.direction.z * forwardVector.z) * effectiveSpeed * delta;
+                const nextPos = cameraObject.position.clone();
+                nextPos.x += moveX;
+                nextPos.z += moveZ;
+                let collision = false;
+                const PLAYER_RADIUS = 0.6;
+                const TREE_RADIUS = 0.8;
+                for (const tree of grove) {
+                    const dx = nextPos.x - tree.position.x;
+                    const dz = nextPos.z - tree.position.z;
+                    const distance = Math.sqrt(dx * dx + dz * dz);
+                    if (distance < PLAYER_RADIUS + TREE_RADIUS) {
+                        collision = true;
+                        const pushAngle = Math.atan2(dz, dx);
+                        const pushDist = (PLAYER_RADIUS + TREE_RADIUS) - distance + 0.1;
+                        nextPos.x += Math.cos(pushAngle) * pushDist;
+                        nextPos.z += Math.sin(pushAngle) * pushDist;
+                        break;
+                    }
+                }
+                if (!collision) {
+                    cameraObject.position.x = nextPos.x;
+                    cameraObject.position.z = nextPos.z;
+                }
                 
-                cameraObject.position.x += moveX;
-                cameraObject.position.z += moveZ;
                 cameraObject.position.y += this.velocity.y * delta;
-                
-                const groundY = getHeightAt(cameraObject.position.x, -cameraObject.position.z) + 1.8;
-                if (cameraObject.position.y < groundY) {
-                    cameraObject.position.y = groundY;
-                    this.velocity.y = 0;
-                    this.onGround = true;
-                } else {
-                    this.onGround = false;
+                let onSolidSurface = false;
+                const playerFeetY = cameraObject.position.y - 1.8;
+
+                if (this.velocity.y <= 0) {
+                    for (const tree of grove) {
+                        const dx = cameraObject.position.x - tree.position.x;
+                        const dz = cameraObject.position.z - tree.position.z;
+                        const horizontalDistSq = dx * dx + dz * dz;
+                        const canopyCheckRadiusSq = 3 * 3;
+
+                        if (horizontalDistSq < canopyCheckRadiusSq) {
+                            for (let i = 1; i < tree.children.length; i++) {
+                                const canopyPart = tree.children[i];
+                                const canopyBox = new THREE.Box3().setFromObject(canopyPart);
+                                if (cameraObject.position.x > canopyBox.min.x && cameraObject.position.x < canopyBox.max.x &&
+                                    cameraObject.position.z > canopyBox.min.z && cameraObject.position.z < canopyBox.max.z) {
+                                    
+                                    const canopyTopY = canopyBox.max.y;
+                                    if (playerFeetY <= canopyTopY && (playerFeetY - this.velocity.y * delta) > canopyTopY) {
+                                        this.velocity.y = 0;
+                                        cameraObject.position.y = canopyTopY + 1.8;
+                                        onSolidSurface = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (onSolidSurface) break;
+                    }
+                }
+
+                if (!onSolidSurface) {
+                    const groundY = getHeightAt(cameraObject.position.x, -cameraObject.position.z) + 1.8;
+                    if (!isFinite(groundY)) {
+                        console.warn("⚠️ Altura de terreno inválida, respawneando...");
+                        this.respawn();
+                        return;
+                    }
+                    if (cameraObject.position.y <= groundY) {
+                        this.velocity.y = 0;
+                        cameraObject.position.y = groundY;
+                        onSolidSurface = true;
+                    }
+                }
+
+                this.onGround = onSolidSurface;
+                if (this.onGround && this.isRespawning) {
+                    this.isRespawning = false;
                 }
 
                 if (this.keys.Space && this.onGround) {
                     this.velocity.y = this.classStats.jumpHeight;
                 }
-
-                if (this.mouse.down && pointerLockControls.isLocked && Date.now() - this.lastShotTime >= this.classStats.weapon.fireRate) {
-                    this.lastShotTime = Date.now();
-                    this.playShotSound();
-                    this.recoilTarget.z = 0.1;
-                    
-                    const direction = new THREE.Vector3();
-                    this.camera.getWorldDirection(direction);
-                    const spawnPos = this.camera.position.clone().add(direction.clone().multiplyScalar(0.5));
-                    
-                    const projectileData = {
-                        id: THREE.MathUtils.generateUUID(),
-                        owner: userId,
-                        position: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
-                        velocity: { x: direction.x * this.classStats.weapon.projectileSpeed, y: direction.y * this.classStats.weapon.projectileSpeed, z: direction.z * this.classStats.weapon.projectileSpeed },
-                        range: this.classStats.weapon.range,
-                        spawnTime: Date.now()
-                    };
-                    spawnProjectile(projectileData, true);
+                
+                this.mesh.position.set(
+                    cameraObject.position.x,
+                    cameraObject.position.y - 0.8,
+                    cameraObject.position.z
+                );
+                if (this.mouse.down && pointerLockControls.isLocked) {
+                    const now = Date.now();
+                    if (now - this.lastShotTime >= this.classStats.weapon.fireRate) {
+                        this.lastShotTime = now;
+                        this.playShotSound();
+                        this.recoilTarget.z = 0.1;
+                        const direction = new THREE.Vector3();
+                        this.camera.getWorldDirection(direction);
+                        const spawnPos = this.camera.position.clone().add(direction.clone().multiplyScalar(0.5));
+                        
+                        const projectileData = {
+                            id: THREE.MathUtils.generateUUID(),
+                            owner: userId,
+                            position: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
+                            velocity: { x: direction.x * this.classStats.weapon.projectileSpeed, y: direction.y * this.classStats.weapon.projectileSpeed, z: direction.z * this.classStats.weapon.projectileSpeed },
+                            range: this.classStats.weapon.range,
+                        };
+                        spawnProjectile(projectileData, true);
+                    }
                 }
-
-                const isMoving = this.keys.KeyW || this.keys.KeyS || this.keys.KeyA || this.keys.KeyD;
                 this.bobTime += delta * (speed * (isMoving && this.onGround ? 0.2 : 0));
                 this.weapon.position.y = -0.4 + Math.sin(this.bobTime) * 0.02;
                 this.weapon.position.x = 0.25 + Math.cos(this.bobTime * 0.5) * 0.01;
                 this.recoil.lerp(this.recoilTarget, delta * 20);
                 this.recoilTarget.lerp(new THREE.Vector3(), delta * 10);
                 this.weapon.position.z = -0.6 - this.recoil.z;
-
-                // ========== CORRECCIÓN 3.A Y REDUCCIÓN DE ESCRITURAS ==========
-                if (Date.now() - this.lastSyncTime >= 200 && currentGameState.inMultiplayer) {
+                if (Date.now() - this.lastSyncTime >= 100) {
                     this.lastSyncTime = Date.now();
-                    const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                    updateDoc(gameRef, {
-                        [`duel.players.${userId}.position`]: { x: cameraObject.position.x, y: cameraObject.position.y, z: cameraObject.position.z },
-                        [`duel.players.${userId}.rotationY`]: this.camera.rotation.y,
-                        [`duel.players.${userId}.rotationX`]: this.camera.rotation.x
-                    }).catch(e => console.warn("Firestore update failed, likely due to quota:", e.message));
+                    if (currentGameState.inMultiplayer) {
+                        const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                        updateDoc(gameRef, {
+                            [`duel.players.${userId}.position`]: {
+                                x: this.mesh.position.x,
+                                y: this.mesh.position.y,
+                                z: this.mesh.position.z
+                            },
+                            [`duel.players.${userId}.rotationY`]: this.camera.rotation.y
+                        });
+                    }
                 }
             }
         }
@@ -3689,10 +4173,10 @@
                 this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
                 this.mesh.castShadow = true;
                 
-                const baseHealth = 60; // Start with 60 HP
-                this.health = baseHealth * Math.pow(1.2, zombieModeState.round - 1); // 20% increase per round
+                const baseHealth = 60;
+                this.health = baseHealth * Math.pow(1.2, zombieModeState.round - 1);
                 
-                this.speed = 2.4 + (zombieModeState.round * 0.35); // Speed increases more per round
+                this.speed = 2.4 + (zombieModeState.round * 0.35);
                 this.damage = 50; 
                 this.attackCooldown = 0;
                 this.velocity = new THREE.Vector3();
@@ -3707,7 +4191,8 @@
 
             createZombieFaceTexture() {
                 const canvas = document.createElement('canvas');
-                canvas.width = 128; canvas.height = 128;
+                canvas.width = 128;
+                canvas.height = 128;
                 const context = canvas.getContext('2d');
 
                 const gradient = context.createRadialGradient(64, 64, 10, 64, 64, 80);
@@ -3722,24 +4207,44 @@
                 }
                 
                 context.fillStyle = 'rgba(0,0,0,0.5)';
-                context.beginPath(); context.arc(45, 50, 12, 0, Math.PI * 2); context.fill();
-                context.beginPath(); context.arc(83, 50, 12, 0, Math.PI * 2); context.fill();
+                context.beginPath();
+                context.arc(45, 50, 12, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.arc(83, 50, 12, 0, Math.PI * 2);
+                context.fill();
+
 
                 context.fillStyle = '#ff1744';
-                context.beginPath(); context.arc(45, 50, 8, 0, Math.PI * 2); context.fill();
-                context.beginPath(); context.arc(83, 50, 8, 0, Math.PI * 2); context.fill();
+                context.beginPath();
+                context.arc(45, 50, 8, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.arc(83, 50, 8, 0, Math.PI * 2);
+                context.fill();
                 
                 context.fillStyle = '#ff8a80';
-                context.beginPath(); context.arc(45, 50, 3, 0, Math.PI * 2); context.fill();
-                context.beginPath(); context.arc(83, 50, 3, 0, Math.PI * 2); context.fill();
+                context.beginPath();
+                context.arc(45, 50, 3, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.arc(83, 50, 3, 0, Math.PI * 2);
+                context.fill();
 
                 context.fillStyle = 'black';
-                context.beginPath(); context.ellipse(64, 90, 25, 10, 0, 0, Math.PI * 2); context.fill();
+                context.beginPath();
+                context.ellipse(64, 90, 25, 10, 0, 0, Math.PI * 2);
+                context.fill();
                 
                 context.fillStyle = '#bbbbbb';
                 for(let i=0; i < 5; i++) {
                     const x = 45 + i * 8;
-                    context.beginPath(); context.moveTo(x, 82); context.lineTo(x + 4, 82); context.lineTo(x + 2, 86); context.closePath(); context.fill();
+                    context.beginPath();
+                    context.moveTo(x, 82);
+                    context.lineTo(x + 4, 82);
+                    context.lineTo(x + 2, 86);
+                    context.closePath();
+                    context.fill();
                 }
 
                 return new THREE.CanvasTexture(canvas);
@@ -3748,7 +4253,7 @@
             spawn() {
                 const SPAWN_RADIUS = 80;
                 const angle = Math.random() * Math.PI * 2;
-                const radius = SPAWN_RADIUS * (0.8 + Math.random() * 0.2); // Spawn further away
+                const radius = SPAWN_RADIUS * (0.8 + Math.random() * 0.2);
                 const spawnX = Math.cos(angle) * radius;
                 const spawnZ = Math.sin(angle) * radius;
                 const spawnY = getHeightAt(spawnX, -spawnZ) + 10;
@@ -3756,8 +4261,10 @@
             }
 
             update(delta, playerPosition) {
-                if (this.attackCooldown > 0) this.attackCooldown -= delta;
-                
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown -= delta;
+                }
+
                 const direction = playerPosition.clone().sub(this.mesh.position).normalize();
                 direction.y = 0;
 
@@ -3765,7 +4272,9 @@
                 this.velocity.z = direction.z * this.speed;
 
                 this.velocity.y -= 30 * delta;
-                this.mesh.position.addScaledVector(this.velocity, delta);
+                this.mesh.position.x += this.velocity.x * delta;
+                this.mesh.position.z += this.velocity.z * delta;
+                this.mesh.position.y += this.velocity.y * delta;
                 
                 const groundY = getHeightAt(this.mesh.position.x, -this.mesh.position.z) + 1.1;
 
@@ -3784,6 +4293,7 @@
                     if (Date.now() - this.lastStepTime > 500) {
                         this.lastStepTime = Date.now();
                         const volume = -20 - Math.min(distanceToPlayer * 1.5, 20);
+                        
                         const stepSynth = soundSources.zombie_steps[soundSources.zombie_step_index];
                         if (stepSynth.state === 'stopped') {
                            stepSynth.volume.value = volume;
@@ -3809,7 +4319,7 @@
                 if (distanceToPlayer < 2.0 && this.attackCooldown <= 0) {
                     if (duelState.localPlayer) {
                         duelState.localPlayer.takeDamage(this.damage);
-                        this.attackCooldown = 1.5; // 1.5 second between attacks
+                        this.attackCooldown = 1.5;
                     }
                 }
             }
@@ -3864,6 +4374,7 @@
             duelState.localPlayer = new PlayerController(true, playerClass);
             duelState.localPlayer.respawn();
             enableShooterControls();
+            updateDuelHud(); // Explicitly update HUD on start
             
             // Start the game
             startNextWave();
@@ -3877,8 +4388,10 @@
             console.log("Ending Zombie Mode.");
             
             if (showResults) {
-                document.getElementById('results-modal-round').textContent = zombieModeState.round;
-                document.getElementById('results-modal-kills').textContent = zombieModeState.kills;
+                const resultsText = translations[state.currentLang].youReachedRound
+                    .replace('{round}', zombieModeState.round)
+                    .replace('{kills}', zombieModeState.kills);
+                document.getElementById('results-modal-text').innerHTML = resultsText;
                 document.getElementById('zombie-results-modal').classList.add('active');
             }
 
@@ -3901,7 +4414,6 @@
             document.querySelectorAll('.controls').forEach(c => c.classList.remove('hidden'));
             
             if(resetTimerState) {
-                // Restore the timer to its pre-zombie state, but paused.
                 pauseTimer();
                 const elapsedTime = (performance.now() - zombieModeStartTime) / 1000;
                 state.currentTime = Math.round(Math.max(0, preZombieState.currentTime - elapsedTime));
