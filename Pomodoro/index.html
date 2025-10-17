@@ -570,6 +570,13 @@
             box-shadow: 0 0 15px #3cff9c, 0 0 30px #3cff9c, inset 0 0 5px rgba(0,0,0,0.5);
             border-color: #3cff9c;
         }
+        #duel-mode-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: translateX(-50%) scale(1);
+            box-shadow: none;
+            border-color: #333;
+        }
         
         #class-selection-modal .modal-content {
             max-width: 900px;
@@ -2409,6 +2416,7 @@
                 (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
                 duelModeBtn.textContent = '⚔️ ¡Duelo! ⚔️';
                 duelModeBtn.classList.remove('hidden');
+                 duelModeBtn.disabled = !currentGameState.isHost;
             } else {
                 duelModeBtn.classList.add('hidden');
             }
@@ -2509,17 +2517,26 @@
                     duelModeBtn.classList.add('hidden');
                 }
             } else if (currentGameState.inMultiplayer && currentGameState.mode === 'versus') {
-                const playersData = duelState.players;
-                const p1Status = playersData[currentGameState.playerIds[0]]?.status;
-                const p2Status = playersData[currentGameState.playerIds[1]]?.status;
+                const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
+                getDoc(gameRef).then(docSnap => {
+                    if (docSnap.exists()) {
+                        const gameData = docSnap.data();
+                        const playersData = gameData.players;
+                        const hostId = gameData.hostId;
+                        const guestId = Object.keys(playersData).find(id => id !== hostId);
+                        const p1Status = playersData[hostId]?.status;
+                        const p2Status = guestId ? playersData[guestId]?.status : null;
 
-                if ((p1Status === 'shortBreak' || p1Status === 'longBreak') && 
-                    (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
-                    duelModeBtn.textContent = '⚔️ ¡Duelo! ⚔️';
-                    duelModeBtn.classList.remove('hidden');
-                } else {
-                    duelModeBtn.classList.add('hidden');
-                }
+                        if ((p1Status === 'shortBreak' || p1Status === 'longBreak') && 
+                            (p2Status === 'shortBreak' || p2Status === 'longBreak')) {
+                            duelModeBtn.textContent = '⚔️ ¡Duelo! ⚔️';
+                            duelModeBtn.classList.remove('hidden');
+                            duelModeBtn.disabled = !currentGameState.isHost;
+                        } else {
+                            duelModeBtn.classList.add('hidden');
+                        }
+                    }
+                });
             } else {
                  duelModeBtn.classList.add('hidden');
             }
@@ -2557,10 +2574,12 @@
             // Update class selection view
             if (newDuelStatus === 'selecting') {
                 const opponentId = currentGameState.playerIds.find(id => id !== userId);
-                const opponentClass = gameData.duel?.players?.[opponentId]?.class;
-                const myClass = gameData.duel?.players?.[userId]?.class;
-                if(myClass && !opponentClass) {
-                    document.getElementById('waiting-for-opponent-class').classList.remove('hidden');
+                if (opponentId) {
+                    const opponentClass = gameData.duel?.players?.[opponentId]?.class;
+                    const myClass = gameData.duel?.players?.[userId]?.class;
+                    if(myClass && !opponentClass) {
+                        document.getElementById('waiting-for-opponent-class').classList.remove('hidden');
+                    }
                 }
             }
             
@@ -2642,7 +2661,7 @@
         }
 
         async function handleDuelButtonClick() {
-            if (currentGameState.inMultiplayer) {
+            if (currentGameState.inMultiplayer && currentGameState.isHost) {
                 const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
                 const initialDuelState = {
                     status: 'selecting',
@@ -2675,10 +2694,12 @@
                 const duelData = gameSnap.data().duel;
                 const playerIds = Object.keys(duelData.players);
                 
+                if(playerIds.length < 2) return;
+
                 const p1Class = duelData.players[playerIds[0]]?.class;
                 const p2Class = duelData.players[playerIds[1]]?.class;
 
-                if (playerIds.length === 2 && p1Class && p2Class) {
+                if (p1Class && p2Class) {
                     // Only host transitions the game state to active
                     if (currentGameState.isHost) {
                          await updateDoc(gameRef, { 'duel.status': 'active' });
@@ -3219,7 +3240,7 @@
                                 const myClass = duelState.players[userId].class;
                                 const damage = CLASS_STATS[myClass].weapon.damage;
                                 const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                                const plainProjectileData = { id: p.userData.id, owner: p.userData.owner, position: {x: p.userData.initialPosition.x, y: p.userData.initialPosition.y, z: p.userData.initialPosition.z }, velocity: {x: p.userData.velocity.x, y: p.userData.velocity.y, z: p.userData.velocity.z }, range: p.userData.range };
+                                const plainProjectileData = p.userData.originalData;
 
                                 updateDoc(gameRef, {
                                     [`duel.players.${opponentId}.health`]: increment(-damage),
@@ -3781,14 +3802,14 @@
                         this.recoilTarget.z = 0.1;
                         const direction = new THREE.Vector3();
                         this.camera.getWorldDirection(direction);
-                        const spawnPos = this.camera.position.clone();
+                        const spawnPos = this.camera.position.clone().add(direction.clone().multiplyScalar(0.5)); // Spawn slightly in front
+                        
                         const projectileData = {
                             id: THREE.MathUtils.generateUUID(),
                             owner: userId,
-                            position: spawnPos,
-                            velocity: direction.multiplyScalar(this.classStats.weapon.projectileSpeed),
+                            position: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
+                            velocity: { x: direction.x * this.classStats.weapon.projectileSpeed, y: direction.y * this.classStats.weapon.projectileSpeed, z: direction.z * this.classStats.weapon.projectileSpeed },
                             range: this.classStats.weapon.range,
-                            initialPosition: spawnPos
                         };
                         spawnProjectile(projectileData, true);
                     }
