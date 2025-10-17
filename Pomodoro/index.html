@@ -2619,7 +2619,7 @@
             if (newDuelStatus === 'active' && duelState.active) {
                 const duelData = gameData.duel;
                 for (const id in duelData.players) {
-                    if (id !== userId && duelState.remotePlayer) { // Update remote player
+                    if (id !== userId && duelState.remotePlayer && duelState.remotePlayer.userData.targetPosition) { // Update remote player
                         const remoteData = duelData.players[id];
                         if (remoteData.position) {
                            duelState.remotePlayer.userData.targetPosition.set(remoteData.position.x, remoteData.position.y, remoteData.position.z);
@@ -2888,21 +2888,16 @@
              projectile.userData.range = data.range;
              projectile.userData.spawnTime = Date.now();
              projectile.userData.initialPosition = data.position;
+             projectile.userData.originalData = data;
              
              scene.add(projectile);
              duelState.projectiles.push(projectile);
 
             if (isLocal && currentGameState.inMultiplayer) {
                 const gameRef = doc(db, `artifacts/${appId}/public/data/games`, currentGameState.gameId);
-                const plainData = {
-                    id: data.id,
-                    owner: data.owner,
-                    position: { x: data.position.x, y: data.position.y, z: data.position.z },
-                    velocity: { x: data.velocity.x, y: data.velocity.y, z: data.velocity.z },
-                    range: data.range
-                };
+                
                 await updateDoc(gameRef, {
-                    projectiles: arrayUnion(plainData)
+                    projectiles: arrayUnion(data)
                 });
             }
         }
