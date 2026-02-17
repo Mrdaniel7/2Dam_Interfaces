@@ -1,0 +1,182 @@
+<!DOCTYPE html><html lang="en-gb"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>GentleFinance - Proceso de aplicaciones</title><meta name="description" content="Documentación técnica y narrativa del proceso de creación de GentleFinance, una aplicación progresiva (PWA) de gestión financiera personal construida con Vanilla JS y&hellip;"><meta name="generator" content="Publii Open-Source CMS for Static Site"><link rel="canonical" href="./gentlefinance.html"><link rel="stylesheet" href="./assets/css/fontawesome-all.min.css?v=85514f933f9e0b82460af63f1a403fa5"><link rel="stylesheet" href="./assets/css/style.css?v=a43d11e6c8e1828dd0b983b73b3cdb13"><noscript><link rel="stylesheet" href="./assets/css/noscript.css?v=efa867a99f5064d6729e4dc2008ad50b"></noscript><script type="application/ld+json">{"@context":"http://schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"./gentlefinance.html"},"headline":"GentleFinance","datePublished":"2026-02-17T13:10+01:00","dateModified":"2026-02-17T13:50+01:00","description":"Documentación técnica y narrativa del proceso de creación de GentleFinance, una aplicación progresiva (PWA) de gestión financiera personal construida con Vanilla JS y&hellip;","author":{"@type":"Person","name":"Daniel Terroba Alcalá","url":"./authors/daniel-terroba-alcala/"},"publisher":{"@type":"Organization","name":"Daniel Terroba Alcalá"}}</script><style>#wrapper > .bg {
+               background-image: url(./assets/images/overlay.png), linear-gradient(0deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), url();
+           }</style><noscript><style>img[loading] {
+                    opacity: 1;
+                }</style></noscript></head><body class="is-preload page-template"><div id="wrapper"><header id="header"><a class="logo" href="./">Proceso de aplicaciones</a></header><nav id="nav"><ul class="links"><li><a href="./pomodoro-creciente.html" target="_self">Pomodoro viviente</a></li><li><a href="./calendario-multimedia.html" target="_self">Calendario Multimedia</a></li><li><a href="./guia-turistica-san-martin-de-la-vega.html" target="_self">Turismo San Martin de la Vega</a></li><li><a href="./clonar-listen-ai.html" target="_self">Listen Ai</a></li><li><a href="./visor-de-documentos-universal.html" target="_self">Visualizador de documentos</a></li><li><a href="./comic-vikingo.html" target="_self">comic Vikingo</a></li><li><a href="./control-servidores.html" target="_self">Control Servidores</a></li><li class="active"><a href="./gentlefinance.html" target="_self">GentleFinance</a></li></ul></nav><main id="main"><article class="post"><header class="major"><h1>GentleFinance</h1><p class="post__inner"></p></header><div class="post__inner post__entry"><p> </p><div class="post__toc"><h3>Índice</h3><ul><li><a href="#intro">Introducción</a></li><li><strong>Parte 1: Desarrollo de la App</strong><ul><li><a href="#funcionalidades">1. Funcionalidades y Arquitectura</a></li><li><a href="#fase1">2. Fases 1–10: Cimientos y APIs</a></li><li><a href="#fase2">3. Fases 11–20: Visualización de Mercados</a></li><li><a href="#fase3">4. Fases 21–30: La Evolución del Mapa</a></li><li><a href="#fase4">5. Fases 31–40: Cloud y Backend</a></li><li><a href="#fase5">6. Fases 41–50: Refactorización (Antigravity)</a></li><li><a href="#metodologia">7. Metodología de Prompting</a></li><li><a href="#mapa-codigo">8. Mapa del Código</a></li><li><a href="#resultado-final">9. Resultado Final</a></li></ul></li></ul></div><h1 id="intro">GentleFinance PWA: De Prompt a Producto</h1><p>Documentación técnica y narrativa del proceso de creación de <strong>GentleFinance</strong>, una aplicación progresiva (PWA) de gestión financiera personal construida con Vanilla JS y potenciada por Inteligencia Artificial.</p><hr><h1 id="funcionalidades">1. Funcionalidades (qué hace la app)</h1><h2 id="funcionalidades-lista">1.1 Lista de funcionalidades</h2><div class="cm-block"><ul class="cm-list"><li><strong>Arquitectura Singleton Modular</strong>: Gestión centralizada del estado (<code>state</code>) accesible globalmente para depuración sencilla.</li><li><strong>Dashboard en Tiempo Real</strong>: Integración de múltiples APIs financieras (Crypto, Stocks, Forex) con actualización dinámica.</li><li><strong>Mapa Inmobiliario Interactivo</strong>: Visualización SVG tipo "Heatmap" que colorea comunidades autónomas según el precio del m².</li><li><strong>Seguridad E2E (Web Crypto API)</strong>: Cifrado de datos sensibles en el cliente antes de enviarlos a la nube.</li><li><strong>Importación Inteligente</strong>:<ul><li>Sistema "Drag &amp; Drop" para archivos bancarios.</li><li>Detección automática de formato (CSV, OFX).</li><li>Guías visuales paso a paso por entidad bancaria.</li></ul></li><li><strong>Backend Serverless</strong>:<ul><li>Persistencia en <strong>Firebase Firestore</strong>.</li><li>Almacenamiento de adjuntos en <strong>Firebase Storage</strong>.</li><li>Autenticación social (Google Auth).</li></ul></li></ul><p style="margin-top: 10px;"><span class="cm-pill">Fintech</span> <span class="cm-pill">PWA</span> <span class="cm-pill">Firebase</span> <span class="cm-pill">Data Viz</span></p></div><h2 id="funcionalidades-codigo">1.2 Dónde está en el código (extractos)</h2><div class="cm-block"><ul class="cm-list"><li><strong>Gestor de Estado</strong> → <code>js/app.js</code> (Clase <code>GentleFinances</code>).</li><li><strong>Motor de Gráficos</strong> → <code>js/dashboard.js</code> usando Chart.js.</li><li><strong>Conectores API</strong> → <code>js/api.js</code> (CoinGecko, Finnhub).</li><li><strong>Lógica del Mapa</strong> → <code>js/spain-map.js</code> (Cálculo de color por umbral).</li><li><strong>Seguridad</strong> → <code>js/security.js</code> (SHA-256 Hashing).</li></ul><p class="cm-caption" style="margin-top: 10px;">Extracto clave: El corazón de la aplicación</p><pre><code>const GentleFinances = {
+    state: {
+        user: null,
+        transactions: [],
+        accounts: [],
+        budgets: [],
+        marketData: { crypto: {}, stocks: {} }
+    },
+
+    init() {
+        this.registerServiceWorker();
+        this.setupAuthListener();
+        this.initializeComponents();
+        console.log('GentleFinance Core Initialized');
+    }
+    // ...
+};</code></pre></div><h1 id="fase1">2. Fases 1–10: Cimientos y Conexión de APIs</h1><div class="gallery-wrapper-grid"><div class="gallery" style="display: flex; gap: 10px; margin-bottom: 20px;"> </div></div><div> </div><div><figure class="post__image"><img loading="lazy" src="./media/posts/12/1.png" alt="" width="1265" height="1291" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/1-xs.png 300w, ./media/posts/12/responsive/1-sm.png 480w, ./media/posts/12/responsive/1-md.png 768w, ./media/posts/12/responsive/1-lg.png 1024w, ./media/posts/12/responsive/1-xl.png 1360w, ./media/posts/12/responsive/1-2xl.png 1600w"></figure></div><div> </div><div> </div><div> </div><div> </div><div> </div><div> </div><div> </div><h2 id="fase1-prompts">2.1 Resumen de prompts</h2><div class="cm-block"><ul class="cm-list"><li><strong>Objetivo</strong>: Establecer un sistema robusto para consumir datos financieros externos.</li><li>Solicité analizar las documentaciones de <strong>Alpha Vantage</strong> y <strong>Finnhub</strong>.</li><li><strong>Reto técnico</strong>: Gestionar los límites de peticiones (Rate Limits) de las cuentas gratuitas.</li><li><strong>Solución</strong>: Creé un panel de configuración (Imagen 8) para inyectar y rotar las API Keys dinámicamente sin tocar el código.</li></ul></div><h2 id="fase1-code">2.2 En qué parte del código se hace</h2><div class="cm-block"><p class="cm-caption">Extracto clave: Gestión de claves API</p><pre><code>const API_CONFIG = {
+    alphaVantage: {
+        key: localStorage.getItem('AV_KEY') || 'DEMO',
+        limit: 25 // peticiones/día
+    },
+    finnhub: {
+        key: localStorage.getItem('FH_KEY'),
+        limit: 60 // peticiones/minuto
+    }
+};
+
+async function fetchStockQuote(symbol) {
+    // Verificación de clave antes de llamar
+    if (!API_CONFIG.finnhub.key) throw new Error("API Key missing");
+    // ... fetch logic
+}</code></pre></div><h1 id="fase2">3. Fases 11–20: Visualización de Mercados (Crypto)</h1><p> </p><p> </p><figure class="post__image"><img loading="lazy" src="./media/posts/12/4.png" alt="" width="1274" height="1318" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/4-xs.png 300w, ./media/posts/12/responsive/4-sm.png 480w, ./media/posts/12/responsive/4-md.png 768w, ./media/posts/12/responsive/4-lg.png 1024w, ./media/posts/12/responsive/4-xl.png 1360w, ./media/posts/12/responsive/4-2xl.png 1600w"></figure><p> </p><h1>3.1 Resumen de prompts</h1><div class="cm-block"><ul class="cm-list"><li><strong>Objetivo</strong>: Crear un dashboard de criptomonedas atractivo y funcional.</li><li>Pedí integración con <strong>CoinGecko API</strong> para obtener el Top 100.</li><li><strong>Requisito Estético</strong>: "Dark Mode" con colores neón para variaciones positivas (verde) y negativas (rojo).</li><li><strong>Sparklines</strong>: Solicitud específica de minigráficos SVG para ver la tendencia de 7 días en una celda pequeña.</li></ul><p> </p><p> </p></div><h1 id="fase3">4. Fases 21–30: La Evolución del Mapa Inmobiliario</h1><p>La funcionalidad más compleja visualmente. Pasamos por tres iteraciones clave hasta llegar al resultado final.</p><div class="gallery-wrapper-grid"><div class="gallery" style="display: flex; flex-direction: column; gap: 15px;"><div style="display: flex; gap: 10px;"><div style="flex: 1;"><figure class="post__image">1. Iteración "Azul" (Prueba de concepto) <img loading="lazy" src="./media/posts/12/6.png" alt="" width="1256" height="1054" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/6-xs.png 300w, ./media/posts/12/responsive/6-sm.png 480w, ./media/posts/12/responsive/6-md.png 768w, ./media/posts/12/responsive/6-lg.png 1024w, ./media/posts/12/responsive/6-xl.png 1360w, ./media/posts/12/responsive/6-2xl.png 1600w"></figure></div></div><div style="flex: 1;"><p class="cm-caption">2. Iteración "Dorado" (Estética)</p></div></div><div><figure class="post__image">3. Versión Final: Heatmap Funcional <img loading="lazy" src="./media/posts/12/10.png" alt="" width="994" height="1030" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/10-xs.png 300w, ./media/posts/12/responsive/10-sm.png 480w, ./media/posts/12/responsive/10-md.png 768w, ./media/posts/12/responsive/10-lg.png 1024w, ./media/posts/12/responsive/10-xl.png 1360w, ./media/posts/12/responsive/10-2xl.png 1600w"></figure></div></div><h2 id="fase3-prompts">4.1 Historia de las iteraciones</h2><div class="cm-block"><ul class="cm-list"><li><strong>Iteración 1 (Azul)</strong>: "Genera un SVG de España. Quiero ver si podemos hacer clickable cada comunidad". El resultado funcionaba pero desentonaba con el diseño.</li><li><strong>Iteración 2 (Dorado)</strong>: "Cambia el estilo para que coincida con la marca 'GentleFinance' (Premium/Gold)". El resultado fue elegante pero poco informativo (todo del mismo color).</li><li><strong>Iteración 3 (Heatmap)</strong>: "Necesito utilidad. Colorea las zonas según el precio del m². Verde=Barato, Rojo=Caro, Dorado=Lujo". Se implementó la lógica de semáforo.</li></ul></div><h2 id="fase3-code">4.2 Lógica del Heatmap</h2><div class="cm-block"><p class="cm-caption">Extracto clave: Algoritmo de coloración dinámica</p><pre><code>// js/spain-map.js
+getColorForPrice(price) {
+    // Oro: Mercados de lujo (&gt; 3000€/m2)
+    if (price &gt; 3000) return '#FFD700'; 
+    
+    // Rojo: Mercados tensionados (&gt; 2000€/m2)
+    if (price &gt; 2000) return '#C53030'; 
+    
+    // Verde: Oportunidades (&lt; 1500€/m2)
+    if (price &lt; 1500) return '#48BB78';
+    
+    return '#4A5568'; // Gris (Sin datos)
+}</code></pre></div><h1 id="fase4">5. Fases 31–40: Cloud y Backend Serverless</h1><div class="gallery-wrapper-grid"><div class="gallery" style="display: flex; gap: 10px;"> </div></div><div> </div><div> </div><div><figure class="post__image"><img loading="lazy" src="./media/posts/12/7.png" alt="" width="1270" height="1341" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/7-xs.png 300w, ./media/posts/12/responsive/7-sm.png 480w, ./media/posts/12/responsive/7-md.png 768w, ./media/posts/12/responsive/7-lg.png 1024w, ./media/posts/12/responsive/7-xl.png 1360w, ./media/posts/12/responsive/7-2xl.png 1600w"></figure></div><p> </p><p> </p><figure class="post__image"><img loading="lazy" src="./media/posts/12/2-2.png" alt="" width="2548" height="1362" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/2-2-xs.png 300w, ./media/posts/12/responsive/2-2-sm.png 480w, ./media/posts/12/responsive/2-2-md.png 768w, ./media/posts/12/responsive/2-2-lg.png 1024w, ./media/posts/12/responsive/2-2-xl.png 1360w, ./media/posts/12/responsive/2-2-2xl.png 1600w"></figure><p> </p><figure class="post__image"><img loading="lazy" src="./media/posts/12/8.png" alt="" width="379" height="136" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/8-xs.png 300w, ./media/posts/12/responsive/8-sm.png 480w, ./media/posts/12/responsive/8-md.png 768w, ./media/posts/12/responsive/8-lg.png 1024w, ./media/posts/12/responsive/8-xl.png 1360w, ./media/posts/12/responsive/8-2xl.png 1600w"></figure><p> </p><h2 id="fase4-prompts">5.1 Resumen de prompts</h2><div class="cm-block"><ul class="cm-list"><li><strong>Objetivo</strong>: Persistencia de datos y subida de archivos.</li><li>Configuración de <strong>Firebase Storage</strong> (Bucket regional) para almacenar extractos bancarios.</li><li>Diseño de la UI de importación: "Quiero una zona de arrastrar archivos y botones grandes con los logos de los bancos principales (BBVA, Santander...) que muestren instrucciones al hacer clic".</li></ul></div><h1 id="fase5">6. Fases 41–50: Refactorización con IA (Antigravity)</h1><p> </p><figure class="post__image"><img loading="lazy" src="./media/posts/12/limite-de-gemini-fast.png" alt="" width="396" height="140" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/limite-de-gemini-fast-xs.png 300w, ./media/posts/12/responsive/limite-de-gemini-fast-sm.png 480w, ./media/posts/12/responsive/limite-de-gemini-fast-md.png 768w, ./media/posts/12/responsive/limite-de-gemini-fast-lg.png 1024w, ./media/posts/12/responsive/limite-de-gemini-fast-xl.png 1360w, ./media/posts/12/responsive/limite-de-gemini-fast-2xl.png 1600w"></figure><p> </p><p> </p><h2 id="fase5-prompts">6.1 Metodología de limpieza</h2><div class="cm-block"><ul class="cm-list"><li><strong>Problema</strong>: Tras 40 iteraciones, el código tenía duplicidades y estilos CSS en conflicto.</li><li><strong>Prompt Maestro</strong>: "Analiza todo el proyecto, busca inconsistencias en 'css/styles.css' y errores en los módulos de JS. Ejecuta un plan de implementación para limpiar el código sin romper el mapa ni las APIs".</li><li><strong>Resultado</strong>: El agente (ver panel derecho en imagen 3) auditó los archivos, eliminó clases redundantes y consolidó las variables de color CSS.</li></ul></div><h1 id="metodologia">7. Metodología de Prompting</h1><div class="cm-block"><p>Para lograr una aplicación de este calibre sin escribir código manualmente, seguí una estrategia de <strong>"Capas Funcionales"</strong>:</p><ol class="cm-list"><li><strong>Capa Estructural (HTML/Layout)</strong>: Definir primero el esqueleto y la rejilla (Grid/Flexbox).</li><li><strong>Capa de Datos (Mock)</strong>: "Rellena los gráficos con datos falsos para ver cómo queda".</li><li><strong>Capa de Lógica (JS Real)</strong>: "Ahora reemplaza los datos falsos con esta API Key de Finnhub".</li><li><strong>Capa de Estilo (Iteración)</strong>: "El mapa azul es aburrido, hazlo dorado".</li><li><strong>Capa de Auditoría (Refactor)</strong>: "Revisa tu propio código y optimízalo".</li></ol></div><h1 id="mapa-codigo">8. Mapa del Código</h1><div class="cm-block"><p class="cm-caption">Estructura de archivos final:</p><ul class="cm-list"><li><strong>/index.html</strong>: Entry point.</li><li><strong>/css/</strong><ul><li><code>styles.css</code>: Estilos globales y variables (Glassmorphism).</li><li><code>animations.css</code>: Transiciones de modales y tooltips.</li></ul></li><li><strong>/js/</strong><ul><li><code>app.js</code>: Core Singleton.</li><li><code>api.js</code>: CoinGecko &amp; Finnhub wrappers.</li><li><code>dashboard.js</code>: Lógica de widgets y Chart.js.</li><li><code>spain-map.js</code>: SVG rendering &amp; interaction.</li><li><code>firebase-sdk.js</code>: Auth, Firestore &amp; Storage.</li><li><code>import.js</code>: File parsing logic.</li></ul></li></ul></div><h1 id="resultado-final">9. Resultado Final</h1><p>Una PWA financiera completa, capaz de monitorizar mercados en tiempo real, visualizar datos inmobiliarios complejos y gestionar finanzas personales con seguridad bancaria.</p><figure class="post__image"><img loading="lazy" src="./media/posts/12/11.png" alt="" width="418" height="692" sizes="(max-width: 48em) 100vw, 768px" srcset="./media/posts/12/responsive/11-xs.png 300w, ./media/posts/12/responsive/11-sm.png 480w, ./media/posts/12/responsive/11-md.png 768w, ./media/posts/12/responsive/11-lg.png 1024w, ./media/posts/12/responsive/11-xl.png 1360w, ./media/posts/12/responsive/11-2xl.png 1600w"></figure><div id="report-wrapper"><div class="documentation-container"><div class="module-group"><h1 style="color: #c5a059; border-bottom: 1px solid #c5a059; padding-bottom: 10px; margin-bottom: 20px;"><i class="fas fa-code"></i> Documentación Técnica de Funciones</h1><section><h2><i class="fas fa-rocket"></i> Inicialización de la App <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> app.js</span></h2><p>Función principal que arranca la aplicación, registrando el Service Worker y configurando los listeners de autenticación y UI.</p><pre><code><span class="c-purple">init</span>() {
+    <span class="c-comment">// Registro de PWA y Service Worker</span>
+    <span class="c-purple">this</span>.<span class="c-blue">registerServiceWorker</span>();
+    
+    <span class="c-comment">// Configuración de seguridad y autenticación</span>
+    <span class="c-purple">this</span>.<span class="c-blue">setupAuthListener</span>();
+    
+    <span class="c-comment">// Inicialización de componentes UI</span>
+    <span class="c-purple">this</span>.<span class="c-blue">initializeComponents</span>();
+    <span class="c-purple">this</span>.<span class="c-blue">initModals</span>();
+}</code></pre></section><section><h2><i class="fas fa-compass"></i> Navegación SPA <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> navigation.js</span></h2><p>Gestiona el cambio de vistas sin recargar la página, actualizando el historial y la barra lateral.</p><pre><code><span class="c-purple">navigateTo</span>(pageId, pushState = <span class="c-purple">true</span>) {
+    <span class="c-comment">// Ocultar todas las vistas</span>
+    <span class="c-blue">document</span>.<span class="c-blue">querySelectorAll</span>(<span class="c-green">'.view-section'</span>).<span class="c-blue">forEach</span>(el =&gt; el.style.display = <span class="c-green">'none'</span>);
+
+    <span class="c-comment">// Mostrar vista seleccionada</span>
+    <span class="c-purple">const</span> view = <span class="c-blue">document</span>.<span class="c-blue">getElementById</span>(<span class="c-green">`view-${pageId}`</span>);
+    <span class="c-purple">if</span> (view) view.style.display = <span class="c-green">'block'</span>;
+
+    <span class="c-comment">// Actualizar historial del navegador</span>
+    <span class="c-purple">if</span> (pushState) history.<span class="c-blue">pushState</span>({ page: pageId }, <span class="c-green">''</span>, <span class="c-green">`#${pageId}`</span>);
+    
+    <span class="c-comment">// Inicializar módulo específico</span>
+    <span class="c-purple">this</span>.<span class="c-blue">initPageModule</span>(pageId);
+}</code></pre></section><section><h2><i class="fas fa-chart-line"></i> Cálculo de Patrimonio <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> dashboard.js</span></h2><p>Calcula el patrimonio neto total sumando cuentas, efectivo e inversiones.</p><pre><code><span class="c-purple">calculateNetWorth</span>() {
+    <span class="c-purple">const</span> accounts = GentleFinances.state.accounts || [];
+    
+    <span class="c-comment">// Suma de saldos bancarios</span>
+    <span class="c-purple">const</span> totalLiquid = accounts.<span class="c-blue">reduce</span>((sum, acc) =&gt; sum + (acc.balance || <span class="c-cyan">0</span>), <span class="c-cyan">0</span>);
+    
+    <span class="c-comment">// En una implementación completa sumaría inversiones y crypto</span>
+    <span class="c-purple">return</span> { 
+        total: totalLiquid, 
+        liquid: totalLiquid 
+    };
+}</code></pre></section><section><h2><i class="fas fa-database"></i> Creación de Transacciones <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> firebase-sdk.js</span></h2><p>Guarda una nueva transacción en Firestore con encriptación E2E.</p><pre><code><span class="c-purple">async</span> <span class="c-blue">create</span>(data) {
+    <span class="c-purple">const</span> user = AuthService.<span class="c-blue">getCurrentUser</span>();
+    
+    <span class="c-comment">// Encriptación de datos sensibles antes de enviar</span>
+    <span class="c-purple">const</span> encrypted = <span class="c-purple">await</span> E2EE.<span class="c-blue">encryptData</span>(data);
+    
+    <span class="c-comment">// Guardado en subcolección del usuario</span>
+    <span class="c-purple">await</span> <span class="c-blue">addDoc</span>(<span class="c-blue">collection</span>(db, <span class="c-green">'users'</span>, user.uid, <span class="c-green">'transactions'</span>), {
+        ...encrypted,
+        userId: user.uid,
+        createdAt: <span class="c-blue">serverTimestamp</span>()
+    });
+}</code></pre></section><section><h2><i class="fas fa-lock"></i> Encriptación AES-GCM <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> crypto-service.js</span></h2><p>Servicio de encriptación local usando Web Crypto API.</p><pre><code><span class="c-purple">async</span> <span class="c-blue">encrypt</span>(data) {
+    <span class="c-purple">const</span> encoder = <span class="c-purple">new</span> <span class="c-blue">TextEncoder</span>();
+    <span class="c-purple">const</span> encodedData = encoder.<span class="c-blue">encode</span>(<span class="c-blue">JSON</span>.<span class="c-blue">stringify</span>(data));
+
+    <span class="c-comment">// Generar IV aleatorio de 12 bytes</span>
+    <span class="c-purple">const</span> iv = window.crypto.<span class="c-blue">getRandomValues</span>(<span class="c-purple">new</span> <span class="c-blue">Uint8Array</span>(<span class="c-cyan">12</span>));
+
+    <span class="c-comment">// Cifrado AES-GCM</span>
+    <span class="c-purple">const</span> encryptedBuffer = <span class="c-purple">await</span> window.crypto.subtle.<span class="c-blue">encrypt</span>(
+        { name: <span class="c-green">"AES-GCM"</span>, iv: iv },
+        <span class="c-purple">this</span>.key,
+        encodedData
+    );
+    
+    <span class="c-comment">// Retorna formato IV:Ciphertext</span>
+    <span class="c-purple">return</span> <span class="c-green">`${this.arrayBufferToBase64(iv)}:${this.arrayBufferToBase64(encryptedBuffer)}`</span>;
+}</code></pre></section><section><h2><i class="fas fa-wallet"></i> Disponible para Presupuestar <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> budget.js</span></h2><p>Calcula cuánto dinero queda disponible para asignar a categorías (Zero-Based Budgeting).</p><pre><code><span class="c-purple">getAvailableToBudget</span>() {
+    <span class="c-purple">const</span> accounts = GentleFinances.state.accounts || [];
+    <span class="c-purple">const</span> budgets = GentleFinances.state.budgets || [];
+
+    <span class="c-comment">// Total dinero real vs Total ya asignado</span>
+    <span class="c-purple">const</span> totalBalance = accounts.<span class="c-blue">reduce</span>((sum, acc) =&gt; sum + acc.balance, <span class="c-cyan">0</span>);
+    <span class="c-purple">const</span> totalBudgeted = budgets.<span class="c-blue">reduce</span>((sum, b) =&gt; sum + b.budgeted, <span class="c-cyan">0</span>);
+
+    <span class="c-purple">return</span> totalBalance - totalBudgeted;
+}</code></pre></section><section><h2><i class="fas fa-bullseye"></i> Progreso Circular SVG <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> goals.js</span></h2><p>Genera dinámicamente el SVG para los anillos de progreso de las metas.</p><pre><code><span class="c-purple">getCircularProgress</span>(percent, radius = <span class="c-cyan">30</span>, color = <span class="c-green">'var(--gold-primary)'</span>) {
+    <span class="c-purple">const</span> circumference = <span class="c-cyan">2</span> * Math.PI * radius;
+    <span class="c-purple">const</span> offset = circumference - (percent / <span class="c-cyan">100</span>) * circumference;
+    
+    <span class="c-purple">return</span> <span class="c-green">`&lt;circle 
+        r="${radius}" 
+        cx="40" cy="40" 
+        stroke-dasharray="${circumference}" 
+        stroke-dashoffset="${offset}" 
+        stroke="${color}"
+    /&gt;`</span>;
+}</code></pre></section><section><h2><i class="fas fa-layer-group"></i> Lógica de Heatmap Inmobiliario <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> spain-map.js</span></h2><p>Este fragmento muestra cómo se resolvió la <strong>Iteración C</strong> del mapa, convirtiendo datos brutos en colores visuales.</p><pre><code><span class="c-purple">const</span> <span class="c-blue">getCommunityColor</span> = (price, avgPrice) =&gt; {
+    <span class="c-comment">// Definición de umbrales para el mapa de calor</span>
+    <span class="c-purple">const</span> threshold = {
+        low: avgPrice * <span class="c-cyan">0.8</span>,  <span class="c-comment">// 20% más barato que la media</span>
+        high: avgPrice * <span class="c-cyan">1.2</span>  <span class="c-comment">// 20% más caro que la media</span>
+    };
+
+    <span class="c-comment">// Lógica de semáforo (Verde -&gt; Amarillo -&gt; Rojo)</span>
+    <span class="c-purple">if</span> (price &lt; threshold.low) <span class="c-purple">return</span> <span class="c-green">'#4caf50'</span>; <span class="c-comment">// Accesible (Verde)</span>
+    <span class="c-purple">if</span> (price &gt; threshold.high) <span class="c-purple">return</span> <span class="c-green">'#f44336'</span>; <span class="c-comment">// Caro (Rojo)</span>
+    <span class="c-purple">return</span> <span class="c-green">'#ffeb3b'</span>; <span class="c-comment">// Promedio (Amarillo)</span>
+};</code></pre></section><section><h2><i class="fas fa-sync-alt"></i> Sincronización de Importación <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> import.js</span></h2><p>Gestión de la subida de archivos bancarios al Storage de Firebase.</p><pre><code><span class="c-purple">async</span> <span class="c-blue">uploadBankFile</span>(file, bankId) {
+    <span class="c-comment">// Referencia al bucket configurado en la Fase 4</span>
+    <span class="c-purple">const</span> storageRef = <span class="c-blue">ref</span>(storage, <span class="c-green">`uploads/${auth.currentUser.uid}/${bankId}/${file.name}`</span>);
+    
+    <span class="c-comment">// Subida con metadatos para triggers en Cloud Functions</span>
+    <span class="c-purple">const</span> metadata = { customMetadata: { <span class="c-green">'processed'</span>: <span class="c-green">'false'</span> } };
+    <span class="c-purple">await</span> <span class="c-blue">uploadBytes</span>(storageRef, file, metadata);
+    
+    <span class="c-purple">return</span> <span class="c-blue">getDownloadURL</span>(storageRef);
+}</code></pre></section><section><h2><i class="fas fa-globe"></i> Consulta de Cotizaciones <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> api.js</span></h2><p>Obtiene el precio actual de un activo usando la API externa (Finnhub).</p><pre><code><span class="c-purple">async</span> <span class="c-blue">getQuote</span>(symbol) {
+    <span class="c-purple">const</span> url = <span class="c-green">`${FINNHUB_CONFIG.baseUrl}/quote?symbol=${symbol}&amp;token=${FINNHUB_CONFIG.apiKey}`</span>;
+    
+    <span class="c-purple">try</span> {
+        <span class="c-purple">const</span> response = <span class="c-purple">await</span> <span class="c-blue">fetch</span>(url);
+        <span class="c-purple">return</span> <span class="c-purple">await</span> response.<span class="c-blue">json</span>();
+    } <span class="c-purple">catch</span> (e) {
+        console.<span class="c-blue">error</span>(<span class="c-green">'Error fetching quote:'</span>, e);
+        <span class="c-purple">return</span> <span class="c-purple">null</span>;
+    }
+}</code></pre></section><section><h2><i class="fas fa-briefcase"></i> Añadir Inversión <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> portfolio.js</span></h2><p>Registra una nueva posición en el portfolio del usuario.</p><pre><code><span class="c-purple">async</span> <span class="c-blue">addInvestment</span>(investment) {
+    <span class="c-purple">const</span> newInv = {
+        id: Date.<span class="c-blue">now</span>().<span class="c-blue">toString</span>(),
+        ...investment,
+        date: <span class="c-purple">new</span> <span class="c-blue">Date</span>().<span class="c-blue">toISOString</span>()
+    };
+    
+    <span class="c-purple">this</span>.investments.<span class="c-blue">push</span>(newInv);
+    <span class="c-purple">await</span> <span class="c-purple">this</span>.<span class="c-blue">save</span>();
+    <span class="c-purple">this</span>.<span class="c-blue">updateUI</span>();
+    
+    <span class="c-blue">showToast</span>(<span class="c-green">'Inversión registrada correctamente'</span>);
+}</code></pre></section><section><h2><i class="fas fa-shield-alt"></i> Confirmación Estricta <span class="tag js"><i class="fab fa-js" style="margin-right: 5px;"></i> ux.js</span></h2><p>Modal de seguridad que obliga a escribir una palabra clave para acciones destructivas.</p><pre><code><span class="c-blue">confirm</span>(title, message, onConfirm, type = <span class="c-green">'strict'</span>) {
+    <span class="c-purple">this</span>.callback = onConfirm;
+    
+    <span class="c-comment">// En modo 'strict' requiere input de usuario</span>
+    <span class="c-purple">if</span> (type === <span class="c-green">'strict'</span>) {
+        <span class="c-blue">document</span>.<span class="c-blue">getElementById</span>(<span class="c-green">'safetyInput'</span>).style.display = <span class="c-green">'block'</span>;
+        <span class="c-blue">document</span>.<span class="c-blue">getElementById</span>(<span class="c-green">'safetyBtn'</span>).disabled = <span class="c-purple">true</span>;
+    }
+    
+    <span class="c-blue">this</span>.<span class="c-blue">showModal</span>(title, message);
+}</code></pre></section></div></div></div></div></article></main><footer id="copyright"><p>© Daniel Terroba Alcala<br><br></p></footer></div><script src="./assets/js/jquery.min.js?v=c9771cc3e90e18f5336eedbd0fffb2cf"></script><script src="./assets/js/jquery.scrollex.min.js?v=f89065e3d988006af9791b44561d7c90"></script><script src="./assets/js/jquery.scrolly.min.js?v=1ed5a78bde1476875a40f6b9ff44fc14"></script><script src="./assets/js/browser.min.js?v=c07298dd19048a8a69ad97e754dfe8d0"></script><script src="./assets/js/breakpoints.min.js?v=81a479eb099e3b187613943b085923b8"></script><script src="./assets/js/util.min.js?v=4201a626f8c9b614a663b3a1d7d82615"></script><script src="./assets/js/main.min.js?v=56233c354bd814758be8bff42f7e13a5"></script><script>/*<![CDATA[*/var images=document.querySelectorAll("img[loading]");for(var i=0;i<images.length;i++){if(images[i].complete){images[i].classList.add("is-loaded")}else{images[i].addEventListener("load",function(){this.classList.add("is-loaded")},false)}};/*]]>*/</script></body></html>
